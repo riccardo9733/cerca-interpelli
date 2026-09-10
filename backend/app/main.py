@@ -3,8 +3,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .config import settings
-from .database import init_db
-from .scheduler import start_scheduler, stop_scheduler
+from .database import init_db, get_db
+from .scheduler import start_scheduler, stop_scheduler, is_within_active_hours
 from .routers import interpelli, sync
 from .services.wp_fetcher import sync_interpelli
 
@@ -22,11 +22,25 @@ async def lifespan(app: FastAPI):
     
     # Avvio sync iniziale se configurato
     if settings.AUTO_SYNC_ON_STARTUP:
+        has_data = False
         try:
-            logger.info("Esecuzione sincronizzazione iniziale...")
-            sync_interpelli()
-        except Exception as e:
-            logger.error(f"Errore durante sync iniziale: {e}")
+            with get_db() as conn:
+                row = conn.execute("SELECT COUNT(*) as c FROM interpelli").fetchone()
+                has_data = row["c"] > 0 if row else False
+        except Exception:
+            pass
+
+        if is_within_active_hours() or not has_data:
+            try:
+                logger.info("Esecuzione sincronizzazione iniziale...")
+                sync_interpelli()
+            except Exception as e:
+                logger.error(f"Errore durante sync iniziale: {e}")
+        else:
+            logger.info(
+                f"Sync iniziale all'avvio saltato (orario fuori dalla finestra "
+                f"{settings.SYNC_START_HOUR}:00 - {settings.SYNC_END_HOUR}:00 e dati già presenti)."
+            )
 
     # Avvio APScheduler
     start_scheduler()

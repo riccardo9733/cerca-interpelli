@@ -7,7 +7,10 @@ class Settings(BaseSettings):
     DATABASE_PATH: str = ""
     PDF_CACHE_DIR: str = ""
     WP_API_URL: str = "https://padova.istruzioneveneto.gov.it/wp-json/wp/v2/posts?categories=212&per_page=50"
-    SYNC_INTERVAL_MINUTES: int = int(os.getenv("SYNC_INTERVAL_MINUTES", "15"))
+    SYNC_INTERVAL_MINUTES: int = int(os.getenv("SYNC_INTERVAL_MINUTES", "30"))
+    SYNC_START_HOUR: int = int(os.getenv("SYNC_START_HOUR", "7"))
+    SYNC_END_HOUR: int = int(os.getenv("SYNC_END_HOUR", "21"))
+    SYNC_TIMEZONE: str = os.getenv("SYNC_TIMEZONE", "Europe/Rome")
     AUTO_SYNC_ON_STARTUP: bool = True
 
     def model_post_init(self, __context):

@@ -68,6 +68,8 @@ Apri il browser su `http://localhost:3000`.
 ## Configurazione Parametri (.env o docker-compose.yml)
 
 Nel file `docker-compose.yml` è possibile personalizzare:
-- `SYNC_INTERVAL_MINUTES`: Intervallo di aggiornamento automatico in minuti (predefinito: `15`).
-- `AUTO_SYNC_ON_STARTUP`: Se eseguire una sincronizzazione all'avvio del container (predefinito: `true`).
+- `SYNC_INTERVAL_MINUTES`: Intervallo di aggiornamento automatico in minuti (predefinito: `30`).
+- `SYNC_START_HOUR`: Ora di inizio monitoraggio (predefinito: `7` - ore 07:00).
+- `SYNC_END_HOUR`: Ora di fine monitoraggio (predefinito: `21` - ore 21:00; fermo tra le 21:01 e le 06:59).
+- `AUTO_SYNC_ON_STARTUP`: Se eseguire una sincronizzazione all'avvio del container (predefinito: `true`, salta la chiamata notturna se il DB ha già dati).
 - `NEXT_PUBLIC_API_URL`: Indirizzo del backend accessibile dal client (predefinito: `http://localhost:8000`). Se accedi da altri dispositivi nella tua rete locale (es. smartphone), imposta l'IP del tuo PC (es: `http://192.168.1.100:8000`).
