@@ -1,0 +1,614 @@
+[
+  {
+    "name": "IC Legnaro e Casalserugo",
+    "code": "PDIC825002",
+    "city": "Legnaro",
+    "address": "Via Roma 30, 35020 Legnaro (PD)",
+    "lat": 45.3468,
+    "lon": 11.9632,
+    "aliases": ["legnaro", "casalserugo", "ic legnaro", "ic di legnaro"]
+  },
+  {
+    "name": "IC Ponte San Nicolò",
+    "code": "PDIC82800D",
+    "city": "Ponte San Nicolò",
+    "address": "Via Giorato 2, 35020 Ponte San Nicolò (PD)",
+    "lat": 45.3672,
+    "lon": 11.9304,
+    "aliases": ["ponte san nicolo", "ponte san nicolò", "ic ponte san nicolo"]
+  },
+  {
+    "name": "IC Nicolò Tommaseo Conselve",
+    "code": "PDIC82000V",
+    "city": "Conselve",
+    "address": "Via Vittorio Emanuele II 1, 35026 Conselve (PD)",
+    "lat": 45.2341,
+    "lon": 11.8712,
+    "aliases": ["conselve", "tommaseo", "ic conselve", "ic nicolo tommaseo"]
+  },
+  {
+    "name": "IC Loreggia Villa del Conte",
+    "code": "PDIC85200A",
+    "city": "Loreggia",
+    "address": "Via Palladio 13, 35010 Loreggia (PD)",
+    "lat": 45.5947,
+    "lon": 11.9961,
+    "aliases": ["loreggia", "villa del conte", "ic loreggia"]
+  },
+  {
+    "name": "IC Maserà di Padova",
+    "code": "PDIC87600V",
+    "city": "Maserà di Padova",
+    "address": "Via Don G. Minzoni 1, 35020 Maserà di Padova (PD)",
+    "lat": 45.3218,
+    "lon": 11.8687,
+    "aliases": ["masera", "maserà", "ic masera", "ic di masera"]
+  },
+  {
+    "name": "IC Monselice Zanellato",
+    "code": "PDIC84300G",
+    "city": "Monselice",
+    "address": "Via Carrubbio 42, 35043 Monselice (PD)",
+    "lat": 45.2394,
+    "lon": 11.7511,
+    "aliases": ["monselice", "zanellato", "ic monselice", "ic zanellato"]
+  },
+  {
+    "name": "IC Noventa Padovana Santini",
+    "code": "PDIC861005",
+    "city": "Noventa Padovana",
+    "address": "Via Valmarana 33, 35027 Noventa Padovana (PD)",
+    "lat": 45.4144,
+    "lon": 11.9542,
+    "aliases": ["noventa", "santini", "noventa padovana", "ic noventa", "ic santini"]
+  },
+  {
+    "name": "IC Borgoricco",
+    "code": "PDIC84800P",
+    "city": "Borgoricco",
+    "address": "Viale Europa 12, 35010 Borgoricco (PD)",
+    "lat": 45.5342,
+    "lon": 11.9644,
+    "aliases": ["borgoricco", "ic borgoricco", "ic di borgoricco"]
+  },
+  {
+    "name": "VIII IC Volta Padova",
+    "code": "PDIC88600D",
+    "city": "Padova",
+    "address": "Via Lucca 46, 35143 Padova (PD)",
+    "lat": 45.3855,
+    "lon": 11.8596,
+    "aliases": ["volta", "viii ic", "viii ic volta", "ic volta"]
+  },
+  {
+    "name": "III IC Briosco Padova",
+    "code": "PDIC88100A",
+    "city": "Padova",
+    "address": "Via Lippi 11, 35134 Padova (PD)",
+    "lat": 45.4268,
+    "lon": 11.8847,
+    "aliases": ["briosco", "iii ic", "iii ic briosco", "ic briosco"]
+  },
+  {
+    "name": "I IC Petrarca Padova",
+    "code": "PDIC87900A",
+    "city": "Padova",
+    "address": "Via Concari 1, 35122 Padova (PD)",
+    "lat": 45.4055,
+    "lon": 11.8742,
+    "aliases": ["petrarca", "i ic petrarca", "i ic"]
+  },
+  {
+    "name": "II IC Ardigò Padova",
+    "code": "PDIC88000E",
+    "city": "Padova",
+    "address": "Via Agostini 3, 35131 Padova (PD)",
+    "lat": 45.4191,
+    "lon": 11.8812,
+    "aliases": ["ardigo", "ardigò", "ii ic ardigo", "ii ic"]
+  },
+  {
+    "name": "IV IC Rosmini Padova",
+    "code": "PDIC882006",
+    "city": "Padova",
+    "address": "Via Forcellini 132, 35128 Padova (PD)",
+    "lat": 45.3942,
+    "lon": 11.8995,
+    "aliases": ["rosmini", "iv ic rosmini", "iv ic"]
+  },
+  {
+    "name": "V IC Donatello Padova",
+    "code": "PDIC883002",
+    "city": "Padova",
+    "address": "Via Boccaccio 80, 35128 Padova (PD)",
+    "lat": 45.3995,
+    "lon": 11.9125,
+    "aliases": ["donatello", "v ic donatello", "v ic"]
+  },
+  {
+    "name": "VI IC Chiesanuova Padova",
+    "code": "PDIC88400T",
+    "city": "Padova",
+    "address": "Via Chiesanuova 138, 35136 Padova (PD)",
+    "lat": 45.4123,
+    "lon": 11.8415,
+    "aliases": ["chiesanuova", "vi ic", "vi ic chiesanuova"]
+  },
+  {
+    "name": "VII IC San Camillo Padova",
+    "code": "PDIC88500N",
+    "city": "Padova",
+    "address": "Via Forcellini 70, 35128 Padova (PD)",
+    "lat": 45.3982,
+    "lon": 11.8941,
+    "aliases": ["san camillo", "vii ic", "vii ic san camillo"]
+  },
+  {
+    "name": "IX IC Tartini Padova",
+    "code": "PDIC887009",
+    "city": "Padova",
+    "address": "Via Vicentini 21, 35136 Padova (PD)",
+    "lat": 45.4182,
+    "lon": 11.8542,
+    "aliases": ["tartini", "ix ic", "ix ic tartini"]
+  },
+  {
+    "name": "X IC Margherita Hack Padova",
+    "code": "PDIC888005",
+    "city": "Padova",
+    "address": "Via San Rocco 2, 35135 Padova (PD)",
+    "lat": 45.4312,
+    "lon": 11.8672,
+    "aliases": ["margherita hack", "x ic", "x ic hack"]
+  },
+  {
+    "name": "XI IC Vivaldi Padova",
+    "code": "PDIC889001",
+    "city": "Padova",
+    "address": "Via Moro 13, 35129 Padova (PD)",
+    "lat": 45.4215,
+    "lon": 11.9214,
+    "aliases": ["vivaldi", "xi ic", "xi ic vivaldi"]
+  },
+  {
+    "name": "XII IC Alighieri Padova",
+    "code": "PDIC890005",
+    "city": "Padova",
+    "address": "Via Guicciardini 1, 35142 Padova (PD)",
+    "lat": 45.3812,
+    "lon": 11.8715,
+    "aliases": ["alighieri", "xii ic", "xii ic alighieri"]
+  },
+  {
+    "name": "IC Albignasego",
+    "code": "PDIC83400R",
+    "city": "Albignasego",
+    "address": "Via Milano 1, 35020 Albignasego (PD)",
+    "lat": 45.3524,
+    "lon": 11.8719,
+    "aliases": ["albignasego", "ic albignasego"]
+  },
+  {
+    "name": "IC Selvazzano Dentro 1",
+    "code": "PDIC83600C",
+    "city": "Selvazzano Dentro",
+    "address": "Via Don Bosco 1, 35030 Selvazzano Dentro (PD)",
+    "lat": 45.3892,
+    "lon": 11.7854,
+    "aliases": ["selvazzano", "selvazzano dentro", "ic selvazzano"]
+  },
+  {
+    "name": "IC Abano Terme",
+    "code": "PDIC832002",
+    "city": "Abano Terme",
+    "address": "Via San Daniele 1, 35031 Abano Terme (PD)",
+    "lat": 45.3592,
+    "lon": 11.7895,
+    "aliases": ["abano", "abano terme", "ic abano"]
+  },
+  {
+    "name": "IC Montegrotto Terme",
+    "code": "PDIC831006",
+    "city": "Montegrotto Terme",
+    "address": "Via Claudiana 5, 35036 Montegrotto Terme (PD)",
+    "lat": 45.3284,
+    "lon": 11.7882,
+    "aliases": ["montegrotto", "montegrotto terme", "ic montegrotto"]
+  },
+  {
+    "name": "IC Piove di Sacco 1",
+    "code": "PDIC86800X",
+    "city": "Piove di Sacco",
+    "address": "Via Ortazzi 11, 35028 Piove di Sacco (PD)",
+    "lat": 45.2975,
+    "lon": 12.0362,
+    "aliases": ["piove di sacco", "piove", "ic piove di sacco"]
+  },
+  {
+    "name": "IC Piove di Sacco 2",
+    "code": "PDIC86900Q",
+    "city": "Piove di Sacco",
+    "address": "Via De Gasperi 1, 35028 Piove di Sacco (PD)",
+    "lat": 45.2991,
+    "lon": 12.0421,
+    "aliases": ["piove 2", "ic piove di sacco 2"]
+  },
+  {
+    "name": "IC Cittadella",
+    "code": "PDIC84400B",
+    "city": "Cittadella",
+    "address": "Via Borgo Treviso 140, 35013 Cittadella (PD)",
+    "lat": 45.6512,
+    "lon": 11.7915,
+    "aliases": ["cittadella", "ic cittadella"]
+  },
+  {
+    "name": "IC Camposampiero",
+    "code": "PDIC84900E",
+    "city": "Camposampiero",
+    "address": "Via Puccini 2, 35012 Camposampiero (PD)",
+    "lat": 45.5712,
+    "lon": 11.9312,
+    "aliases": ["camposampiero", "ic camposampiero"]
+  },
+  {
+    "name": "IC Este 1",
+    "code": "PDIC837008",
+    "city": "Este",
+    "address": "Via Zanchi 18, 35042 Este (PD)",
+    "lat": 45.2281,
+    "lon": 11.6582,
+    "aliases": ["este", "ic este", "ic este 1"]
+  },
+  {
+    "name": "IC Este Pascoli",
+    "code": "PDIC838004",
+    "city": "Este",
+    "address": "Piazza Pegoraro 1, 35042 Este (PD)",
+    "lat": 45.2255,
+    "lon": 11.6612,
+    "aliases": ["pascoli este", "ic pascoli este"]
+  },
+  {
+    "name": "IC Cadoneghe",
+    "code": "PDIC85500T",
+    "city": "Cadoneghe",
+    "address": "Via Rigotti 1, 35010 Cadoneghe (PD)",
+    "lat": 45.4523,
+    "lon": 11.9281,
+    "aliases": ["cadoneghe", "ic cadoneghe"]
+  },
+  {
+    "name": "IC Vigonza",
+    "code": "PDIC85600N",
+    "city": "Vigonza",
+    "address": "Via Carpane 1, 35010 Vigonza (PD)",
+    "lat": 45.4412,
+    "lon": 11.9845,
+    "aliases": ["vigonza", "ic vigonza"]
+  },
+  {
+    "name": "IC Rubano",
+    "code": "PDIC874007",
+    "city": "Rubano",
+    "address": "Via Rovigo 2, 35030 Rubano (PD)",
+    "lat": 45.4312,
+    "lon": 11.7941,
+    "aliases": ["rubano", "ic rubano"]
+  },
+  {
+    "name": "IC Vigodarzere",
+    "code": "PDIC854002",
+    "city": "Vigodarzere",
+    "address": "Via Roma 42, 35010 Vigodarzere (PD)",
+    "lat": 45.4678,
+    "lon": 11.8845,
+    "aliases": ["vigodarzere", "ic vigodarzere"]
+  },
+  {
+    "name": "IC Limena",
+    "code": "PDIC853006",
+    "city": "Limena",
+    "address": "Via Giovanni XXIII 1, 35010 Limena (PD)",
+    "lat": 45.4745,
+    "lon": 11.8482,
+    "aliases": ["limena", "ic limena"]
+  },
+  {
+    "name": "IC Pio X San Giorgio delle Pertiche",
+    "code": "PDIC85000P",
+    "city": "San Giorgio delle Pertiche",
+    "address": "Via Pinaffo 9, 35010 San Giorgio delle Pertiche (PD)",
+    "lat": 45.5412,
+    "lon": 11.9125,
+    "aliases": ["san giorgio delle pertiche", "san giorgio pertiche", "ic san giorgio"]
+  },
+  {
+    "name": "IC Campodarsego",
+    "code": "PDIC85100E",
+    "city": "Campodarsego",
+    "address": "Via De Gasperi 26, 35011 Campodarsego (PD)",
+    "lat": 45.5012,
+    "lon": 11.9135,
+    "aliases": ["campodarsego", "ic campodarsego"]
+  },
+  {
+    "name": "IC Piazzola sul Brenta",
+    "code": "PDIC84700V",
+    "city": "Piazzola sul Brenta",
+    "address": "Via Vescovana 1, 35016 Piazzola sul Brenta (PD)",
+    "lat": 45.5423,
+    "lon": 11.7654,
+    "aliases": ["piazzola", "piazzola sul brenta", "ic piazzola"]
+  },
+  {
+    "name": "IC Trebaseleghe",
+    "code": "PDIC86500C",
+    "city": "Trebaseleghe",
+    "address": "Via Don Orione 2, 35010 Trebaseleghe (PD)",
+    "lat": 45.5841,
+    "lon": 12.0462,
+    "aliases": ["trebaseleghe", "ic trebaseleghe"]
+  },
+  {
+    "name": "IC Piombino Dese",
+    "code": "PDIC86400L",
+    "city": "Piombino Dese",
+    "address": "Via Dante 9, 35017 Piombino Dese (PD)",
+    "lat": 45.6025,
+    "lon": 12.0012,
+    "aliases": ["piombino dese", "ic piombino dese"]
+  },
+  {
+    "name": "IC Saonara",
+    "code": "PDIC860009",
+    "city": "Saonara",
+    "address": "Via Roma 44, 35020 Saonara (PD)",
+    "lat": 45.3721,
+    "lon": 11.9841,
+    "aliases": ["saonara", "ic saonara"]
+  },
+  {
+    "name": "IC Correzzola",
+    "code": "PDIC824006",
+    "city": "Correzzola",
+    "address": "Via Marsala 1, 35020 Correzzola (PD)",
+    "lat": 45.2341,
+    "lon": 12.0712,
+    "aliases": ["correzzola", "ic correzzola"]
+  },
+  {
+    "name": "IC Montegalda (Veggiano / Cervarese)",
+    "code": "PDIC83500L",
+    "city": "Cervarese Santa Croce",
+    "address": "Via Castello 1, 35030 Cervarese Santa Croce (PD)",
+    "lat": 45.4124,
+    "lon": 11.6912,
+    "aliases": ["cervarese", "veggiano", "ic montegalda"]
+  },
+  {
+    "name": "IC Mestrino",
+    "code": "PDIC87300B",
+    "city": "Mestrino",
+    "address": "Via Aquileia 2, 35035 Mestrino (PD)",
+    "lat": 45.4521,
+    "lon": 11.7612,
+    "aliases": ["mestrino", "ic mestrino"]
+  },
+  {
+    "name": "IC Villafranca Padovana",
+    "code": "PDIC87200G",
+    "city": "Villafranca Padovana",
+    "address": "Via Campodoro 2, 35010 Villafranca Padovana (PD)",
+    "lat": 45.4851,
+    "lon": 11.7915,
+    "aliases": ["villafranca", "villafranca padovana", "ic villafranca"]
+  },
+  {
+    "name": "IC Curtarolo Campo San Martino",
+    "code": "PDIC846003",
+    "city": "Curtarolo",
+    "address": "Via Kennedy 1, 35010 Curtarolo (PD)",
+    "lat": 45.5212,
+    "lon": 11.8382,
+    "aliases": ["curtarolo", "campo san martino", "ic curtarolo"]
+  },
+  {
+    "name": "IC San Martino di Lupari",
+    "code": "PDIC845007",
+    "city": "San Martino di Lupari",
+    "address": "Via Leonardo da Vinci 1, 35018 San Martino di Lupari (PD)",
+    "lat": 45.6562,
+    "lon": 11.8541,
+    "aliases": ["san martino di lupari", "ic san martino di lupari"]
+  },
+  {
+    "name": "IC Montagnana",
+    "code": "PDIC83900X",
+    "city": "Montagnana",
+    "address": "Via Circonvallazione 12, 35044 Montagnana (PD)",
+    "lat": 45.2312,
+    "lon": 11.4645,
+    "aliases": ["montagnana", "ic montagnana"]
+  },
+  {
+    "name": "IC Lozzo Atestino",
+    "code": "PDIC84100X",
+    "city": "Lozzo Atestino",
+    "address": "Via Roma 1, 35034 Lozzo Atestino (PD)",
+    "lat": 45.2891,
+    "lon": 11.6282,
+    "aliases": ["lozzo atestino", "lozzo", "ic lozzo atestino"]
+  },
+  {
+    "name": "IC Galzignano Terme - Battaglia",
+    "code": "PDIC83300T",
+    "city": "Battaglia Terme",
+    "address": "Via Colli Euganei 1, 35041 Battaglia Terme (PD)",
+    "lat": 45.2895,
+    "lon": 11.7821,
+    "aliases": ["battaglia terme", "galzignano", "ic battaglia terme", "ic galzignano"]
+  },
+  {
+    "name": "IC Bagnoli di Sopra",
+    "code": "PDIC82100P",
+    "city": "Bagnoli di Sopra",
+    "address": "Via Garibaldi 1, 35023 Bagnoli di Sopra (PD)",
+    "lat": 45.1895,
+    "lon": 11.8845,
+    "aliases": ["bagnoli", "bagnoli di sopra", "ic bagnoli"]
+  },
+  {
+    "name": "IC Tribano",
+    "code": "PDIC82200E",
+    "city": "Tribano",
+    "address": "Via De Gasperi 1, 35020 Tribano (PD)",
+    "lat": 45.2125,
+    "lon": 11.8312,
+    "aliases": ["tribano", "ic tribano"]
+  },
+  {
+    "name": "IC Sant'Angelo di Piove",
+    "code": "PDIC867004",
+    "city": "Sant'Angelo di Piove di Sacco",
+    "address": "Via Roma 1, 35020 Sant'Angelo di Piove di Sacco (PD)",
+    "lat": 45.3421,
+    "lon": 12.0125,
+    "aliases": ["sant'angelo di piove", "sant angelo", "ic sant'angelo"]
+  },
+  {
+    "name": "IC Codevigo",
+    "code": "PDIC82300A",
+    "city": "Codevigo",
+    "address": "Via Vittorio Emanuele 1, 35020 Codevigo (PD)",
+    "lat": 45.2712,
+    "lon": 12.1045,
+    "aliases": ["codevigo", "ic codevigo"]
+  },
+  {
+    "name": "IC Teolo",
+    "code": "PDIC875003",
+    "city": "Teolo",
+    "address": "Via Euganea Treponti 34, 35037 Teolo (PD)",
+    "lat": 45.3612,
+    "lon": 11.7285,
+    "aliases": ["teolo", "treponti", "ic teolo"]
+  },
+  {
+    "name": "IC Casale di Scodosia",
+    "code": "PDIC840004",
+    "city": "Casale di Scodosia",
+    "address": "Via Roma 1, 35040 Casale di Scodosia (PD)",
+    "lat": 45.1841,
+    "lon": 11.4721,
+    "aliases": ["casale di scodosia", "ic casale di scodosia"]
+  },
+  {
+    "name": "IC Due Carrare",
+    "code": "PDIC87700P",
+    "city": "Due Carrare",
+    "address": "Via Roma 1, 35020 Due Carrare (PD)",
+    "lat": 45.2845,
+    "lon": 11.8341,
+    "aliases": ["due carrare", "ic due carrare"]
+  },
+  {
+    "name": "IC Cartura",
+    "code": "PDIC87800E",
+    "city": "Cartura",
+    "address": "Via Barozzo 1, 35025 Cartura (PD)",
+    "lat": 45.2715,
+    "lon": 11.8621,
+    "aliases": ["cartura", "ic cartura"]
+  },
+  {
+    "name": "IIS Curiel Padova",
+    "code": "PDPS06000V",
+    "city": "Padova",
+    "address": "Via Duca d'Aosta 13, 35123 Padova (PD)",
+    "lat": 45.3995,
+    "lon": 11.8691,
+    "aliases": ["liceo curiel", "curiel padova"]
+  },
+  {
+    "name": "Liceo Nievo Padova",
+    "code": "PDPS02000C",
+    "city": "Padova",
+    "address": "Via Barbarigo 38, 35141 Padova (PD)",
+    "lat": 45.4021,
+    "lon": 11.8712,
+    "aliases": ["liceo nievo", "nievo padova"]
+  },
+  {
+    "name": "Liceo Tito Livio Padova",
+    "code": "PDPC01000C",
+    "city": "Padova",
+    "address": "Riviera Tito Livio 9, 35123 Padova (PD)",
+    "lat": 45.4042,
+    "lon": 11.8775,
+    "aliases": ["tito livio", "liceo tito livio"]
+  },
+  {
+    "name": "ITIS Marconi Padova",
+    "code": "PDTF010008",
+    "city": "Padova",
+    "address": "Via Manzoni 80, 35126 Padova (PD)",
+    "lat": 45.3951,
+    "lon": 11.8895,
+    "aliases": ["itis marconi", "marconi padova"]
+  },
+  {
+    "name": "ITIS Severi Padova",
+    "code": "PDTF040004",
+    "city": "Padova",
+    "address": "Via Pettinati 46, 35129 Padova (PD)",
+    "lat": 45.4195,
+    "lon": 11.9054,
+    "aliases": ["itis severi", "severi padova"]
+  },
+  {
+    "name": "Liceo Fermi Padova",
+    "code": "PDPS01000T",
+    "city": "Padova",
+    "address": "Corso Vittorio Emanuele II 87, 35123 Padova (PD)",
+    "lat": 45.3972,
+    "lon": 11.8741,
+    "aliases": ["liceo fermi", "fermi padova"]
+  },
+  {
+    "name": "IIS Calvi Padova",
+    "code": "PDTD04000D",
+    "city": "Padova",
+    "address": "Via Sette Martiri 44, 35143 Padova (PD)",
+    "lat": 45.3912,
+    "lon": 11.8542,
+    "aliases": ["calvi", "iis calvi"]
+  },
+  {
+    "name": "IIS Belzoni Padova",
+    "code": "PDTL01000L",
+    "city": "Padova",
+    "address": "Via Speroni 39, 35137 Padova (PD)",
+    "lat": 45.4082,
+    "lon": 11.8795,
+    "aliases": ["belzoni", "iis belzoni"]
+  },
+  {
+    "name": "IIS Duca degli Abruzzi Padova",
+    "code": "PDIS026002",
+    "city": "Padova",
+    "address": "Via Merlin 1, 35143 Padova (PD)",
+    "lat": 45.3882,
+    "lon": 11.8495,
+    "aliases": ["duca degli abruzzi", "iis duca degli abruzzi"]
+  },
+  {
+    "name": "IIS San Benedetto da Norcia Padova",
+    "code": "PDRA01000T",
+    "city": "Padova",
+    "address": "Via Cave 172, 35136 Padova (PD)",
+    "lat": 45.4215,
+    "lon": 11.8312,
+    "aliases": ["san benedetto", "san benedetto da norcia"]
+  }
+]

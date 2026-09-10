@@ -1,0 +1,30 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: interpelli-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - DATA_DIR=/app/data
+      - SYNC_INTERVAL_MINUTES=15
+      - AUTO_SYNC_ON_STARTUP=true
+    volumes:
+      - ./data:/app/data
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=http://localhost:8000
+    container_name: interpelli-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    depends_on:
+      - backend
