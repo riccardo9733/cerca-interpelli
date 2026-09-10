@@ -1,11 +1,13 @@
 import json
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, HTTPException, Query
 from ..database import get_db
 from ..schemas import InterpelloResponse, UpdateStatusRequest, StatsResponse
+from ..services.geocoder import geocoder
 
 router = APIRouter(prefix="/api", tags=["interpelli"])
+
 
 def row_to_interpello_response(row: dict) -> dict:
     item = dict(row)
@@ -240,3 +242,11 @@ def update_interpello_status(interpello_id: int, req: UpdateStatusRequest):
 
         updated = conn.execute("SELECT * FROM interpelli WHERE id = ?", (interpello_id,)).fetchone()
         return row_to_interpello_response(updated)
+
+@router.get("/geocode")
+def geocode_address(q: str = Query(..., description="Indirizzo, via o comune da geocodificare")):
+    res = geocoder.geocode_user_query(q)
+    if not res:
+        raise HTTPException(status_code=404, detail=f"Indirizzo non trovato: '{q}'")
+    return res
+

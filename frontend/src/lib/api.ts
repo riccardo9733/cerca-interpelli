@@ -86,3 +86,19 @@ export async function triggerManualSync(): Promise<SyncResult> {
   }
   return res.json();
 }
+
+export interface GeocodeResult {
+  address: string;
+  latitude: number;
+  longitude: number;
+}
+
+export async function geocodeAddress(query: string): Promise<GeocodeResult | null> {
+  const url = `${API_BASE_URL}/api/geocode?q=${encodeURIComponent(query)}`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    return null;
+  }
+  return res.json();
+}
+

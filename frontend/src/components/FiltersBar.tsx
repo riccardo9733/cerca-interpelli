@@ -21,7 +21,9 @@ interface FiltersBarProps {
   availableClassi: string[];
   availableOre?: number[];
   totalResults: number;
+  hasUserLocation?: boolean;
 }
+
 
 export function FiltersBar({
   filters,
@@ -29,6 +31,7 @@ export function FiltersBar({
   availableClassi,
   availableOre = [],
   totalResults,
+  hasUserLocation = false,
 }: FiltersBarProps) {
   const [isMobileSheetOpen, setIsMobileSheetOpen] = useState(false);
 
@@ -133,6 +136,9 @@ export function FiltersBar({
             <option value="date_desc">Data pubblicazione</option>
             <option value="scadenza_asc">Scadenza imminente</option>
             <option value="school_asc">Nome scuola (A-Z)</option>
+            {hasUserLocation && (
+              <option value="distance_asc">Distanza (più vicini)</option>
+            )}
           </select>
         </div>
 
@@ -295,8 +301,12 @@ export function FiltersBar({
                 <option value="date_desc">Data di pubblicazione (più recenti)</option>
                 <option value="scadenza_asc">Scadenza più vicina</option>
                 <option value="school_asc">Nome scuola (alfabetico)</option>
+                {hasUserLocation && (
+                  <option value="distance_asc">Distanza (più vicini)</option>
+                )}
               </select>
             </div>
+
 
             {/* Grado Scolastico */}
             <div className="space-y-1.5">

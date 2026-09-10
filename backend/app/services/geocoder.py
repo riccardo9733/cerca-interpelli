@@ -122,4 +122,53 @@ class SchoolGeocoder:
             "longitude": PADOVA_CENTER_LON,
         }
 
+    def geocode_user_query(self, query_str: str) -> Optional[Dict[str, Any]]:
+        clean_q = (query_str or "").strip()
+        if not clean_q:
+            return None
+
+        # 1. Controllo cache SQLite
+        with get_db() as conn:
+            cached = conn.execute(
+                "SELECT address, latitude, longitude FROM geocache WHERE query = ?", (clean_q.lower(),)
+            ).fetchone()
+            if cached:
+                return {
+                    "address": cached["address"],
+                    "latitude": cached["latitude"],
+                    "longitude": cached["longitude"],
+                }
+
+        # 2. Query su Nominatim
+        geo_q = clean_q
+        if "italia" not in geo_q.lower() and "italy" not in geo_q.lower():
+            geo_q = f"{clean_q}, Italia"
+
+        try:
+            params = {"q": geo_q, "format": "json", "limit": 1, "countrycodes": "it"}
+            headers = {"User-Agent": "CercaInterpelliPadova/1.0 (local-selfhosted-app)"}
+            with httpx.Client(timeout=6.0) as client:
+                resp = client.get("https://nominatim.openstreetmap.org/search", params=params, headers=headers)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    if data and len(data) > 0:
+                        lat = float(data[0]["lat"])
+                        lon = float(data[0]["lon"])
+                        display_name = data[0].get("display_name", clean_q)
+                        with get_db() as conn:
+                            conn.execute(
+                                "INSERT OR REPLACE INTO geocache (query, address, latitude, longitude) VALUES (?, ?, ?, ?)",
+                                (clean_q.lower(), display_name, lat, lon),
+                            )
+                        return {
+                            "address": display_name,
+                            "latitude": lat,
+                            "longitude": lon,
+                        }
+        except Exception as ex:
+            logger.warning(f"Geocoding online fallito per query utente '{clean_q}': {ex}")
+
+        return None
+
 geocoder = SchoolGeocoder()
+

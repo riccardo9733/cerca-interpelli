@@ -99,3 +99,24 @@ body {
 .leaflet-popup-tip {
   background: var(--card);
 }
+
+.custom-user-pin {
+  background: transparent;
+  border: none;
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+.pulse-ring-anim {
+  animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+}
+

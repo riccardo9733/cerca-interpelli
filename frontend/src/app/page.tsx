@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { FiltersBar } from '@/components/FiltersBar';
 import { InterpelloCard } from '@/components/InterpelloCard';
@@ -15,7 +15,8 @@ import {
   triggerManualSync,
   FilterParams 
 } from '@/lib/api';
-import { Interpello, Stats } from '@/types/interpello';
+import { Interpello, Stats, UserLocation } from '@/types/interpello';
+import { calculateDistanceKm } from '@/lib/distance';
 import { AlertCircle, RefreshCw, Inbox } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -27,6 +28,11 @@ export default function HomePage() {
   const [activeView, setActiveView] = useState<'list' | 'map'>('list');
   const [selectedInterpello, setSelectedInterpello] = useState<Interpello | null>(null);
   
+  // Posizione utente e filtro per distanza
+  const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
+  const [maxRadiusKm, setMaxRadiusKm] = useState<number | null>(null);
+  const [filterByDistanceInList, setFilterByDistanceInList] = useState<boolean>(false);
+
   const [filters, setFilters] = useState<FilterParams>({
     search: '',
     classe: 'tutte',
@@ -40,6 +46,50 @@ export default function HomePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Caricamento preferenze salvate in localStorage
+  useEffect(() => {
+    try {
+      const savedLoc = localStorage.getItem('cerca_interpelli_user_location');
+      if (savedLoc) setUserLocation(JSON.parse(savedLoc));
+      const savedRadius = localStorage.getItem('cerca_interpelli_max_radius');
+      if (savedRadius !== null && savedRadius !== 'null') {
+        setMaxRadiusKm(Number(savedRadius));
+      }
+      const savedFilterList = localStorage.getItem('cerca_interpelli_filter_list_by_dist');
+      if (savedFilterList !== null) {
+        setFilterByDistanceInList(savedFilterList === 'true');
+      }
+    } catch (e) {
+      console.error('Errore nel recupero della posizione salvata:', e);
+    }
+  }, []);
+
+  const handleUserLocationChange = (loc: UserLocation | null) => {
+    setUserLocation(loc);
+    try {
+      if (loc) {
+        localStorage.setItem('cerca_interpelli_user_location', JSON.stringify(loc));
+      } else {
+        localStorage.removeItem('cerca_interpelli_user_location');
+      }
+    } catch (e) {}
+  };
+
+  const handleMaxRadiusKmChange = (radius: number | null) => {
+    setMaxRadiusKm(radius);
+    try {
+      localStorage.setItem('cerca_interpelli_max_radius', radius === null ? 'null' : String(radius));
+    } catch (e) {}
+  };
+
+  const handleFilterByDistanceInListChange = (val: boolean) => {
+    setFilterByDistanceInList(val);
+    try {
+      localStorage.setItem('cerca_interpelli_filter_list_by_dist', String(val));
+    } catch (e) {}
+  };
+
 
   // Caricamento dati
   const loadData = useCallback(async (currentFilters: FilterParams) => {
@@ -132,6 +182,42 @@ export default function HomePage() {
     }
   };
 
+  // Calcolo interpelli visualizzati con supporto a filtro distanza e ordinamento
+  const displayedInterpelli = useMemo(() => {
+    let list = [...interpelli];
+
+    // Se il filtro per distanza è attivo anche per l'elenco
+    if (filterByDistanceInList && userLocation && maxRadiusKm !== null) {
+      list = list.filter((item) => {
+        if (!item.latitude || !item.longitude) return false;
+        const d = calculateDistanceKm(
+          userLocation.latitude,
+          userLocation.longitude,
+          item.latitude,
+          item.longitude
+        );
+        return d <= maxRadiusKm;
+      });
+    }
+
+    // Ordinamento per distanza se selezionato
+    if (filters.sort === 'distance_asc' && userLocation) {
+      list.sort((a, b) => {
+        const distA =
+          a.latitude && a.longitude
+            ? calculateDistanceKm(userLocation.latitude, userLocation.longitude, a.latitude, a.longitude)
+            : 999999;
+        const distB =
+          b.latitude && b.longitude
+            ? calculateDistanceKm(userLocation.latitude, userLocation.longitude, b.latitude, b.longitude)
+            : 999999;
+        return distA - distB;
+      });
+    }
+
+    return list;
+  }, [interpelli, filterByDistanceInList, userLocation, maxRadiusKm, filters.sort]);
+
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col font-sans selection:bg-muted selection:text-foreground">
       
@@ -153,7 +239,8 @@ export default function HomePage() {
           onFilterChange={handleFilterChange}
           availableClassi={availableClassi}
           availableOre={availableOre}
-          totalResults={interpelli.length}
+          totalResults={displayedInterpelli.length}
+          hasUserLocation={!!userLocation}
         />
 
         {/* Gestione Errori */}
@@ -184,8 +271,14 @@ export default function HomePage() {
           <MapView
             interpelli={interpelli}
             onSelectInterpello={(item) => setSelectedInterpello(item)}
+            userLocation={userLocation}
+            onUserLocationChange={handleUserLocationChange}
+            maxRadiusKm={maxRadiusKm}
+            onMaxRadiusKmChange={handleMaxRadiusKmChange}
+            filterByDistanceInList={filterByDistanceInList}
+            onFilterByDistanceInListChange={handleFilterByDistanceInListChange}
           />
-        ) : interpelli.length === 0 ? (
+        ) : displayedInterpelli.length === 0 ? (
           <div className="py-20 flex flex-col items-center justify-center space-y-3 text-center rounded-xl border border-border bg-card p-8 shadow-xs">
             <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center text-muted-foreground">
               <Inbox className="w-5 h-5" />
@@ -194,21 +287,24 @@ export default function HomePage() {
               Nessun bando trovato
             </h3>
             <p className="text-xs text-muted-foreground max-w-sm">
-              Nessun interpello corrisponde ai parametri impostati. Prova a rimuovere alcuni filtri.
+              Nessun interpello corrisponde ai parametri impostati. Prova a rimuovere alcuni filtri o aumentare il raggio.
             </p>
             <Button
               variant="outline"
               size="sm"
-              onClick={() =>
+              onClick={() => {
                 setFilters({
                   search: '',
                   classe: 'tutte',
                   ordine: 'tutti',
+                  ore: 'tutte',
                   status: 'tutti',
                   only_active: false,
                   sort: 'date_desc',
-                })
-              }
+                });
+                handleMaxRadiusKmChange(null);
+                handleFilterByDistanceInListChange(false);
+              }}
               className="mt-2 text-xs"
             >
               Azzera filtri
@@ -216,12 +312,13 @@ export default function HomePage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
-            {interpelli.map((item) => (
+            {displayedInterpelli.map((item) => (
               <InterpelloCard
                 key={item.id}
                 interpello={item}
                 onOpenDetails={(item) => setSelectedInterpello(item)}
                 onToggleStatus={handleToggleStatus}
+                userLocation={userLocation}
               />
             ))}
           </div>
@@ -234,8 +331,10 @@ export default function HomePage() {
         interpello={selectedInterpello}
         onClose={() => setSelectedInterpello(null)}
         onUpdateStatus={handleUpdateStatusAndNotes}
+        userLocation={userLocation}
       />
 
     </div>
   );
 }
+

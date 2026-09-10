@@ -66,3 +66,10 @@ export interface SyncResult {
   items_updated: number;
   message: string;
 }
+
+export interface UserLocation {
+  address: string;
+  latitude: number;
+  longitude: number;
+}
+

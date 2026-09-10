@@ -18,7 +18,8 @@ import {
   AlertCircle,
   Briefcase
 } from 'lucide-react';
-import { Interpello } from '@/types/interpello';
+import { Interpello, UserLocation } from '@/types/interpello';
+import { calculateDistanceKm, formatDistance } from '@/lib/distance';
 import { CountdownBadge } from './CountdownBadge';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -28,13 +29,16 @@ interface InterpelloModalProps {
   interpello: Interpello | null;
   onClose: () => void;
   onUpdateStatus: (id: number, status: 'nessuno' | 'candidato' | 'preferito' | 'ignorato', notes?: string) => void;
+  userLocation?: UserLocation | null;
 }
 
 export function InterpelloModal({
   interpello,
   onClose,
   onUpdateStatus,
+  userLocation,
 }: InterpelloModalProps) {
+
   const [copiedEmail, setCopiedEmail] = useState(false);
   const [copiedSubject, setCopiedSubject] = useState(false);
   const [notes, setNotes] = useState('');
@@ -189,7 +193,16 @@ export function InterpelloModal({
                   Codice scuola: {interpello.school_code}
                 </p>
               )}
+              {userLocation && interpello.latitude && interpello.longitude && (
+                <div className="pt-1.5 border-t border-border/60 flex items-center justify-between text-[11px]">
+                  <span className="text-muted-foreground">Distanza da te:</span>
+                  <span className="font-semibold text-blue-600 dark:text-blue-400 font-mono">
+                    {formatDistance(calculateDistanceKm(userLocation.latitude, userLocation.longitude, interpello.latitude, interpello.longitude))}
+                  </span>
+                </div>
+              )}
             </div>
+
 
           </div>
 

@@ -12,7 +12,8 @@ import {
   Briefcase,
   AlertCircle
 } from 'lucide-react';
-import { Interpello } from '@/types/interpello';
+import { Interpello, UserLocation } from '@/types/interpello';
+import { calculateDistanceKm, formatDistance } from '@/lib/distance';
 import { CountdownBadge } from './CountdownBadge';
 import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -22,15 +23,28 @@ interface InterpelloCardProps {
   interpello: Interpello;
   onOpenDetails: (interpello: Interpello) => void;
   onToggleStatus: (id: number, currentStatus: string, targetStatus: 'candidato' | 'preferito') => void;
+  userLocation?: UserLocation | null;
 }
 
 export function InterpelloCard({
   interpello,
   onOpenDetails,
   onToggleStatus,
+  userLocation,
 }: InterpelloCardProps) {
   const isCandidato = interpello.status_candidatura === 'candidato';
   const isPreferito = interpello.status_candidatura === 'preferito';
+
+  const distance =
+    userLocation && interpello.latitude && interpello.longitude
+      ? calculateDistanceKm(
+          userLocation.latitude,
+          userLocation.longitude,
+          interpello.latitude,
+          interpello.longitude
+        )
+      : null;
+
 
   // Format publishing date
   const pubDate = new Date(interpello.wp_date).toLocaleDateString('it-IT', {
@@ -75,16 +89,24 @@ export function InterpelloCard({
           >
             {interpello.school_name || interpello.title}
           </h3>
-          {interpello.school_city && (
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <MapPin className="w-3 h-3 text-muted-foreground/70 shrink-0" />
-              <span className="truncate">{interpello.school_city}</span>
-              {interpello.school_address && (
-                <span className="truncate text-muted-foreground/70">· {interpello.school_address}</span>
+          {(interpello.school_city || distance !== null) && (
+            <div className="flex items-center justify-between gap-1 text-xs text-muted-foreground">
+              <div className="flex items-center gap-1 truncate min-w-0">
+                <MapPin className="w-3 h-3 text-muted-foreground/70 shrink-0" />
+                <span className="truncate">{interpello.school_city || 'Padova'}</span>
+                {interpello.school_address && (
+                  <span className="truncate text-muted-foreground/70">· {interpello.school_address}</span>
+                )}
+              </div>
+              {distance !== null && (
+                <span className="shrink-0 font-mono text-[10px] font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 px-1.5 py-0.5 rounded border border-blue-200/60 dark:border-blue-800/60">
+                  {formatDistance(distance)}
+                </span>
               )}
             </div>
           )}
         </div>
+
 
         {/* Badges: Codici Classe Concorso e Specifiche */}
         <div className="flex flex-wrap items-center gap-1.5 pt-1">
