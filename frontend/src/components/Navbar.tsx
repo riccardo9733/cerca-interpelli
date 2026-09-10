@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { RefreshCw, Map, LayoutGrid, CheckCircle2, Bookmark, Flame } from 'lucide-react';
+import { RefreshCw, Map, LayoutGrid, CheckCircle2, Bookmark, Flame, Database } from 'lucide-react';
 import { Stats } from '@/types/interpello';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -13,6 +13,7 @@ interface NavbarProps {
   onViewChange: (view: 'list' | 'map') => void;
   onRefresh: () => void;
   isRefreshing: boolean;
+  onOpenDataManagement?: () => void;
 }
 
 export function Navbar({
@@ -21,6 +22,7 @@ export function Navbar({
   onViewChange,
   onRefresh,
   isRefreshing,
+  onOpenDataManagement,
 }: NavbarProps) {
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border bg-background/95 backdrop-blur-md transition-colors">
@@ -83,7 +85,7 @@ export function Navbar({
             </div>
           )}
 
-          {/* Controlli Destra: Toggle Vista + Sincronizzazione */}
+          {/* Controlli Destra: Toggle Vista + Dati + Sincronizzazione */}
           <div className="flex items-center gap-2">
             
             {/* Toggle Lista / Mappa (Tabs Shadcn) */}
@@ -103,6 +105,20 @@ export function Navbar({
                 </TabsTrigger>
               </TabsList>
             </Tabs>
+
+            {/* Pulsante Gestione Dati Personali / Backup */}
+            {onOpenDataManagement && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onOpenDataManagement}
+                className="h-8 sm:h-9 px-2.5 sm:px-3 gap-1.5 text-xs font-normal"
+                title="I tuoi dati personali e backup (IndexedDB)"
+              >
+                <Database className="w-3.5 h-3.5 text-muted-foreground" />
+                <span className="hidden md:inline">Dati</span>
+              </Button>
+            )}
 
             {/* Pulsante Sincronizza */}
             <Button

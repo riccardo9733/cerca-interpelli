@@ -5,16 +5,24 @@ import { Navbar } from '@/components/Navbar';
 import { FiltersBar } from '@/components/FiltersBar';
 import { InterpelloCard } from '@/components/InterpelloCard';
 import { InterpelloModal } from '@/components/InterpelloModal';
+import { DataManagementModal } from '@/components/DataManagementModal';
 import { MapView } from '@/components/MapView';
 import { 
   fetchInterpelli, 
   fetchStats, 
   fetchClassi, 
   fetchOre,
-  updateInterpelloStatus, 
   triggerManualSync,
   FilterParams 
 } from '@/lib/api';
+import { 
+  migrateLegacyLocalStorage, 
+  setUserSetting, 
+  removeUserSetting, 
+  getAllUserStatuses, 
+  saveUserStatus, 
+  getUserStatsCounts 
+} from '@/lib/db';
 import { Interpello, Stats, UserLocation } from '@/types/interpello';
 import { calculateDistanceKm } from '@/lib/distance';
 import { AlertCircle, RefreshCw, Inbox } from 'lucide-react';
@@ -27,8 +35,9 @@ export default function HomePage() {
   const [availableOre, setAvailableOre] = useState<number[]>([]);
   const [activeView, setActiveView] = useState<'list' | 'map'>('list');
   const [selectedInterpello, setSelectedInterpello] = useState<Interpello | null>(null);
+  const [isDataModalOpen, setIsDataModalOpen] = useState(false);
   
-  // Posizione utente e filtro per distanza
+  // Posizione utente e filtro per distanza (Dexie / IndexedDB)
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [maxRadiusKm, setMaxRadiusKm] = useState<number | null>(null);
   const [filterByDistanceInList, setFilterByDistanceInList] = useState<boolean>(false);
@@ -47,65 +56,94 @@ export default function HomePage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Caricamento preferenze salvate in localStorage
+  // Caricamento preferenze iniziali da Dexie (con migrazione automatica da localStorage se presente)
   useEffect(() => {
-    try {
-      const savedLoc = localStorage.getItem('cerca_interpelli_user_location');
-      if (savedLoc) setUserLocation(JSON.parse(savedLoc));
-      const savedRadius = localStorage.getItem('cerca_interpelli_max_radius');
-      if (savedRadius !== null && savedRadius !== 'null') {
-        setMaxRadiusKm(Number(savedRadius));
+    async function initSettings() {
+      try {
+        const { migratedLocation, migratedRadius, migratedFilterList } = await migrateLegacyLocalStorage();
+        if (migratedLocation) setUserLocation(migratedLocation);
+        if (migratedRadius !== null) setMaxRadiusKm(migratedRadius);
+        setFilterByDistanceInList(migratedFilterList);
+      } catch (e) {
+        console.error('Errore nel recupero impostazioni da Dexie:', e);
       }
-      const savedFilterList = localStorage.getItem('cerca_interpelli_filter_list_by_dist');
-      if (savedFilterList !== null) {
-        setFilterByDistanceInList(savedFilterList === 'true');
-      }
-    } catch (e) {
-      console.error('Errore nel recupero della posizione salvata:', e);
     }
+    initSettings();
   }, []);
 
-  const handleUserLocationChange = (loc: UserLocation | null) => {
+  const handleUserLocationChange = async (loc: UserLocation | null) => {
     setUserLocation(loc);
     try {
       if (loc) {
-        localStorage.setItem('cerca_interpelli_user_location', JSON.stringify(loc));
+        await setUserSetting('user_location', loc);
       } else {
-        localStorage.removeItem('cerca_interpelli_user_location');
+        await removeUserSetting('user_location');
       }
-    } catch (e) {}
+    } catch (e) {
+      console.error('Errore salvataggio posizione utente:', e);
+    }
   };
 
-  const handleMaxRadiusKmChange = (radius: number | null) => {
+  const handleMaxRadiusKmChange = async (radius: number | null) => {
     setMaxRadiusKm(radius);
     try {
-      localStorage.setItem('cerca_interpelli_max_radius', radius === null ? 'null' : String(radius));
-    } catch (e) {}
+      await setUserSetting('max_radius_km', radius);
+    } catch (e) {
+      console.error('Errore salvataggio raggio max:', e);
+    }
   };
 
-  const handleFilterByDistanceInListChange = (val: boolean) => {
+  const handleFilterByDistanceInListChange = async (val: boolean) => {
     setFilterByDistanceInList(val);
     try {
-      localStorage.setItem('cerca_interpelli_filter_list_by_dist', String(val));
-    } catch (e) {}
+      await setUserSetting('filter_list_by_dist', val);
+    } catch (e) {
+      console.error('Errore salvataggio filtro lista per distanza:', e);
+    }
   };
 
-
-  // Caricamento dati
+  // Caricamento dati (Backend interpelli + IndexedDB status locale)
   const loadData = useCallback(async (currentFilters: FilterParams) => {
     setIsLoading(true);
     setError(null);
     try {
-      const [items, statsData, classiData, oreData] = await Promise.all([
-        fetchInterpelli(currentFilters),
+      // Per il backend non filtriamo per status se è candidato/preferito/ignorato perché quei dati risiedono in Dexie
+      const backendFilters: FilterParams = {
+        ...currentFilters,
+        status: currentFilters.status === 'candidato' || currentFilters.status === 'preferito' || currentFilters.status === 'ignorato' 
+          ? 'tutti' 
+          : currentFilters.status,
+      };
+
+      const [items, statsData, classiData, oreData, userStatuses, localCounts] = await Promise.all([
+        fetchInterpelli(backendFilters),
         fetchStats(),
         fetchClassi(),
         fetchOre(),
+        getAllUserStatuses(),
+        getUserStatsCounts(),
       ]);
-      setInterpelli(items);
-      setStats(statsData);
+
+      // Merge locale: abbina a ciascun interpello lo status e le note dell'utente salvati in Dexie
+      const mergedItems = items.map((item) => {
+        const userStat = userStatuses[item.id];
+        return {
+          ...item,
+          status_candidatura: (userStat?.status || 'nessuno') as 'nessuno' | 'candidato' | 'preferito' | 'ignorato',
+          notes: userStat?.notes !== undefined ? userStat.notes : item.notes,
+        };
+      });
+
+      setInterpelli(mergedItems);
       setAvailableClassi(classiData);
       setAvailableOre(oreData);
+
+      // Unisci le statistiche pubbliche con i conteggi personali calcolati da Dexie
+      setStats({
+        ...statsData,
+        candidati: localCounts.candidati,
+        preferiti: localCounts.preferiti,
+      });
     } catch (err: any) {
       console.error('Errore durante caricamento:', err);
       setError(err.message || 'Impossibile connettersi al server locale');
@@ -136,7 +174,7 @@ export default function HomePage() {
     }
   };
 
-  // Aggiornamento rapido stato candidatura (candidato / preferito)
+  // Aggiornamento rapido stato candidatura (candidato / preferito) in Dexie (IndexedDB)
   const handleToggleStatus = async (
     id: number,
     currentStatus: string,
@@ -144,22 +182,24 @@ export default function HomePage() {
   ) => {
     const nextStatus = currentStatus === targetStatus ? 'nessuno' : targetStatus;
     
-    // Aggiornamento ottimistico
+    // Aggiornamento ottimistico dello stato React
     setInterpelli((prev) =>
       prev.map((item) =>
         item.id === id ? { ...item, status_candidatura: nextStatus } : item
       )
     );
 
+    if (selectedInterpello?.id === id) {
+      setSelectedInterpello((prev) => prev ? { ...prev, status_candidatura: nextStatus } : null);
+    }
+
     try {
-      const updated = await updateInterpelloStatus(id, nextStatus);
-      if (selectedInterpello?.id === id) {
-        setSelectedInterpello(updated);
-      }
-      const newStats = await fetchStats();
-      setStats(newStats);
+      // Salvataggio nel database locale Dexie
+      await saveUserStatus(id, nextStatus);
+      const localCounts = await getUserStatsCounts();
+      setStats((prev) => prev ? { ...prev, ...localCounts } : null);
     } catch (err) {
-      console.error('Errore update status:', err);
+      console.error('Errore salvataggio status in Dexie:', err);
       loadData(filters); // rollback
     }
   };
@@ -170,21 +210,33 @@ export default function HomePage() {
     notes?: string
   ) => {
     try {
-      const updated = await updateInterpelloStatus(id, status, notes);
+      // Salvataggio nel database locale Dexie
+      await saveUserStatus(id, status, notes);
       setInterpelli((prev) =>
-        prev.map((item) => (item.id === id ? updated : item))
+        prev.map((item) =>
+          item.id === id ? { ...item, status_candidatura: status, notes: notes ?? item.notes } : item
+        )
       );
-      setSelectedInterpello(updated);
-      const newStats = await fetchStats();
-      setStats(newStats);
+      if (selectedInterpello?.id === id) {
+        setSelectedInterpello((prev) =>
+          prev ? { ...prev, status_candidatura: status, notes: notes ?? prev.notes } : null
+        );
+      }
+      const localCounts = await getUserStatsCounts();
+      setStats((prev) => prev ? { ...prev, ...localCounts } : null);
     } catch (err) {
-      console.error('Errore update status/notes:', err);
+      console.error('Errore salvataggio note/status in Dexie:', err);
     }
   };
 
-  // Calcolo interpelli visualizzati con supporto a filtro distanza e ordinamento
+  // Calcolo interpelli visualizzati con supporto a filtri locali (status Dexie, distanza e ordinamento)
   const displayedInterpelli = useMemo(() => {
     let list = [...interpelli];
+
+    // Filtro per status candidatura locale (se impostato su 'candidato' o 'preferito')
+    if (filters.status && filters.status !== 'tutti') {
+      list = list.filter((item) => item.status_candidatura === filters.status);
+    }
 
     // Se il filtro per distanza è attivo anche per l'elenco
     if (filterByDistanceInList && userLocation && maxRadiusKm !== null) {
@@ -216,7 +268,7 @@ export default function HomePage() {
     }
 
     return list;
-  }, [interpelli, filterByDistanceInList, userLocation, maxRadiusKm, filters.sort]);
+  }, [interpelli, filterByDistanceInList, userLocation, maxRadiusKm, filters.sort, filters.status]);
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col font-sans selection:bg-muted selection:text-foreground">
@@ -228,6 +280,7 @@ export default function HomePage() {
         onViewChange={setActiveView}
         onRefresh={handleRefresh}
         isRefreshing={isRefreshing}
+        onOpenDataManagement={() => setIsDataModalOpen(true)}
       />
 
       {/* Contenuto Principale */}
@@ -332,6 +385,14 @@ export default function HomePage() {
         onClose={() => setSelectedInterpello(null)}
         onUpdateStatus={handleUpdateStatusAndNotes}
         userLocation={userLocation}
+      />
+
+      {/* Modale Gestione Dati Personali IndexedDB (Dexie) */}
+      <DataManagementModal
+        isOpen={isDataModalOpen}
+        onClose={() => setIsDataModalOpen(false)}
+        onDataChanged={() => loadData(filters)}
+        homeAddress={userLocation?.address}
       />
 
     </div>
