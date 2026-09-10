@@ -82,7 +82,8 @@ export async function triggerManualSync(): Promise<SyncResult> {
     method: 'POST',
   });
   if (!res.ok) {
-    throw new Error(`Errore sincronizzazione: ${res.statusText}`);
+    const errorBody = await res.json().catch(() => ({}));
+    throw new Error(errorBody.message || `Errore sincronizzazione: ${res.statusText}`);
   }
   return res.json();
 }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getAdminSupabase } from '@/lib/supabase';
 import { syncInterpelli } from '@/lib/sync/wpFetcher';
 
 export const maxDuration = 60; // Consente fino a 60s per le funzioni Vercel Serverless
@@ -10,9 +11,27 @@ export async function POST(req: NextRequest) {
     const authHeader = req.headers.get('authorization');
 
     if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-      // Se è impostato CRON_SECRET e l'header non corrisponde, verifica comunque se si tratta di chiamata interna/admin
+      // Se è impostato CRON_SECRET e l'header non corrisponde
     }
 
+    // Tenta prima l'invocazione della Supabase Edge Function 'sync'
+    try {
+      const supabase = getAdminSupabase();
+      const { data, error } = await supabase.functions.invoke('sync');
+
+      if (!error && data && data.success !== false) {
+        console.log('Sincronizzazione completata via Supabase Edge Function:', data);
+        return NextResponse.json(data);
+      }
+
+      if (error) {
+        console.warn('Errore invocazione Supabase Edge Function, tentata esecuzione fallback locale:', error);
+      }
+    } catch (edgeErr) {
+      console.warn('Eccezione durante chiamata Edge Function, tentata esecuzione fallback locale:', edgeErr);
+    }
+
+    // Fallback su scraper locale in-process
     const result = await syncInterpelli();
     return NextResponse.json(result);
   } catch (err: any) {
@@ -30,3 +49,4 @@ export async function POST(req: NextRequest) {
 export async function GET(req: NextRequest) {
   return POST(req);
 }
+
