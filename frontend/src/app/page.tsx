@@ -39,7 +39,7 @@ export default function HomePage() {
     ordine: 'tutti',
     ore: 'tutte',
     status: 'tutti',
-    only_active: false,
+    only_active: true,
     sort: 'date_desc',
   });
 
@@ -299,7 +299,7 @@ export default function HomePage() {
                   ordine: 'tutti',
                   ore: 'tutte',
                   status: 'tutti',
-                  only_active: false,
+                  only_active: true,
                   sort: 'date_desc',
                 });
                 handleMaxRadiusKmChange(null);

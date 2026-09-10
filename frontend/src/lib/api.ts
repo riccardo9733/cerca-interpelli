@@ -19,7 +19,7 @@ export async function fetchInterpelli(params: FilterParams = {}): Promise<Interp
   if (params.ordine && params.ordine !== 'tutti') query.append('ordine', params.ordine);
   if (params.ore && params.ore !== 'tutte') query.append('ore', params.ore);
   if (params.status && params.status !== 'tutti') query.append('status', params.status);
-  if (params.only_active) query.append('only_active', 'true');
+  if (params.only_active !== undefined) query.append('only_active', params.only_active ? 'true' : 'false');
   if (params.sort) query.append('sort', params.sort);
 
   const res = await fetch(`${API_BASE_URL}/api/interpelli?${query.toString()}`, {

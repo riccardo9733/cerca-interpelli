@@ -49,7 +49,7 @@ export function FiltersBar({
   if (filters.ordine && filters.ordine !== 'tutti') activeFilterCount++;
   if (filters.ore && filters.ore !== 'tutte') activeFilterCount++;
   if (filters.status && filters.status !== 'tutti') activeFilterCount++;
-  if (filters.only_active) activeFilterCount++;
+  if (filters.only_active === false) activeFilterCount++;
   if (filters.sort && filters.sort !== 'date_desc') activeFilterCount++;
 
   const resetFilters = () => {
@@ -59,7 +59,7 @@ export function FiltersBar({
       ordine: 'tutti',
       ore: 'tutte',
       status: 'tutti',
-      only_active: false,
+      only_active: true,
       sort: 'date_desc',
     });
   };
