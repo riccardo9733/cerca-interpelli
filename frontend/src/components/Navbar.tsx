@@ -76,9 +76,19 @@ export function Navbar({
                 <>
                   <Separator orientation="vertical" className="h-3.5" />
                   <div className="flex items-center gap-1.5 text-foreground">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-muted-foreground" />
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                     <span className="font-semibold font-mono">{stats.candidati}</span>
                     <span className="text-muted-foreground">inviati</span>
+                  </div>
+                </>
+              )}
+              {stats.preferiti > 0 && (
+                <>
+                  <Separator orientation="vertical" className="h-3.5" />
+                  <div className="flex items-center gap-1.5 text-foreground">
+                    <Bookmark className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 fill-current" />
+                    <span className="font-semibold font-mono">{stats.preferiti}</span>
+                    <span className="text-muted-foreground">salvati</span>
                   </div>
                 </>
               )}

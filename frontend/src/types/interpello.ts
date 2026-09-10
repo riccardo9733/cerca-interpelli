@@ -38,7 +38,10 @@ export interface Interpello {
 
   attachments: AttachmentItem[];
   content_raw?: string | null;
-  status_candidatura: 'nessuno' | 'candidato' | 'preferito' | 'ignorato';
+  status_candidatura?: 'nessuno' | 'candidato' | 'preferito' | 'ignorato';
+  is_candidato?: boolean;
+  is_preferito?: boolean;
+  candidatura_date?: string | null;
   notes?: string | null;
 
   created_at: string;

@@ -22,18 +22,24 @@ import { Button } from '@/components/ui/button';
 interface InterpelloCardProps {
   interpello: Interpello;
   onOpenDetails: (interpello: Interpello) => void;
-  onToggleStatus: (id: number, currentStatus: string, targetStatus: 'candidato' | 'preferito') => void;
+  onTogglePreferito: (id: number) => void;
+  onToggleCandidato: (id: number) => void;
   userLocation?: UserLocation | null;
 }
 
 export function InterpelloCard({
   interpello,
   onOpenDetails,
-  onToggleStatus,
+  onTogglePreferito,
+  onToggleCandidato,
   userLocation,
 }: InterpelloCardProps) {
-  const isCandidato = interpello.status_candidatura === 'candidato';
-  const isPreferito = interpello.status_candidatura === 'preferito';
+  const isCandidato = interpello.is_candidato !== undefined 
+    ? interpello.is_candidato 
+    : interpello.status_candidatura === 'candidato';
+  const isPreferito = interpello.is_preferito !== undefined 
+    ? interpello.is_preferito 
+    : interpello.status_candidatura === 'preferito';
 
   const distance =
     userLocation && interpello.latitude && interpello.longitude
@@ -57,10 +63,12 @@ export function InterpelloCard({
 
   return (
     <Card className={`relative flex flex-col justify-between transition-all duration-150 hover:shadow-md ${
-      isCandidato 
-        ? 'ring-1 ring-foreground/20 bg-muted/20' 
+      isCandidato && isPreferito
+        ? 'ring-1 ring-emerald-500/40 bg-emerald-500/[0.02]'
+        : isCandidato 
+        ? 'ring-1 ring-emerald-500/30 bg-emerald-500/[0.02]' 
         : isPreferito
-        ? 'ring-1 ring-amber-500/30'
+        ? 'ring-1 ring-amber-500/30 bg-amber-500/[0.02]'
         : 'hover:border-zinc-300 dark:hover:border-zinc-700'
     }`}>
       
@@ -228,22 +236,30 @@ export function InterpelloCard({
           
           {/* Toggle Candidato */}
           <Button
-            variant={isCandidato ? "default" : "ghost"}
+            variant={isCandidato ? "secondary" : "ghost"}
             size="icon-sm"
-            onClick={() => onToggleStatus(interpello.id, interpello.status_candidatura, 'candidato')}
-            className={`h-8 w-8 rounded-md ${isCandidato ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'}`}
-            title={isCandidato ? 'Candidatura inviata' : 'Segna come inviata'}
+            onClick={() => onToggleCandidato(interpello.id)}
+            className={`h-8 w-8 rounded-md transition-colors ${
+              isCandidato 
+                ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20' 
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+            title={isCandidato ? 'Candidatura inviata (clicca per rimuovere)' : 'Segna come candidatura inviata'}
           >
-            <CheckCircle2 className="w-4 h-4" />
+            <CheckCircle2 className={`w-4 h-4 ${isCandidato ? 'stroke-[2.5]' : ''}`} />
           </Button>
 
           {/* Toggle Preferito */}
           <Button
             variant={isPreferito ? "secondary" : "ghost"}
             size="icon-sm"
-            onClick={() => onToggleStatus(interpello.id, interpello.status_candidatura, 'preferito')}
-            className={`h-8 w-8 rounded-md ${isPreferito ? 'text-amber-600 dark:text-amber-400 bg-amber-500/10' : 'text-muted-foreground hover:text-foreground'}`}
-            title={isPreferito ? 'Salvato tra i preferiti' : 'Salva nei preferiti'}
+            onClick={() => onTogglePreferito(interpello.id)}
+            className={`h-8 w-8 rounded-md transition-colors ${
+              isPreferito 
+                ? 'text-amber-600 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20' 
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+            title={isPreferito ? 'Salvato tra i preferiti (clicca per rimuovere)' : 'Salva nei preferiti'}
           >
             <Bookmark className={`w-4 h-4 ${isPreferito ? 'fill-current' : ''}`} />
           </Button>

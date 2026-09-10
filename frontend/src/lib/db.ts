@@ -8,10 +8,20 @@ export interface UserSettingRecord {
 
 export interface InterpelloUserStatusRecord {
   interpelloId: number;
-  status: 'nessuno' | 'candidato' | 'preferito' | 'ignorato';
+  is_favorite?: boolean;
+  is_candidato?: boolean;
+  status?: 'nessuno' | 'candidato' | 'preferito' | 'ignorato';
   notes?: string;
   candidatura_date?: string;
   updated_at: string;
+}
+
+export interface UserInterpelloData {
+  is_favorite: boolean;
+  is_candidato: boolean;
+  notes?: string;
+  candidatura_date?: string;
+  status: 'nessuno' | 'candidato' | 'preferito' | 'ignorato';
 }
 
 export class CercaInterpelliDatabase extends Dexie {
@@ -23,6 +33,10 @@ export class CercaInterpelliDatabase extends Dexie {
     this.version(1).stores({
       settings: 'key',
       userStatuses: 'interpelloId, status, updated_at',
+    });
+    this.version(2).stores({
+      settings: 'key',
+      userStatuses: 'interpelloId, is_favorite, is_candidato, status, updated_at',
     });
   }
 }
@@ -63,21 +77,107 @@ export async function removeUserSetting(key: string): Promise<void> {
 
 // --- Helper Status & Note Interpelli ---
 
-export async function getAllUserStatuses(): Promise<Record<number, { status: 'nessuno' | 'candidato' | 'preferito' | 'ignorato'; notes?: string }>> {
+export async function getAllUserStatuses(): Promise<Record<number, UserInterpelloData>> {
   if (!db) return {};
   try {
     const all = await db.userStatuses.toArray();
-    const map: Record<number, { status: 'nessuno' | 'candidato' | 'preferito' | 'ignorato'; notes?: string }> = {};
+    const map: Record<number, UserInterpelloData> = {};
     for (const item of all) {
+      const is_favorite = item.is_favorite !== undefined ? item.is_favorite : item.status === 'preferito';
+      const is_candidato = item.is_candidato !== undefined ? item.is_candidato : item.status === 'candidato';
       map[item.interpelloId] = {
-        status: item.status,
+        is_favorite: !!is_favorite,
+        is_candidato: !!is_candidato,
         notes: item.notes,
+        candidatura_date: item.candidatura_date,
+        status: is_candidato ? 'candidato' : is_favorite ? 'preferito' : 'nessuno',
       };
     }
     return map;
   } catch (err) {
     console.error('Errore lettura status da IndexedDB:', err);
     return {};
+  }
+}
+
+export async function toggleUserFavorite(interpelloId: number): Promise<boolean> {
+  if (!db) return false;
+  try {
+    const existing = await db.userStatuses.get(interpelloId);
+    const currentFav = existing?.is_favorite !== undefined ? existing.is_favorite : existing?.status === 'preferito';
+    const currentCand = existing?.is_candidato !== undefined ? existing.is_candidato : existing?.status === 'candidato';
+    const nextFav = !currentFav;
+
+    if (!nextFav && !currentCand && (!existing?.notes || existing.notes.trim() === '')) {
+      await db.userStatuses.delete(interpelloId);
+    } else {
+      await db.userStatuses.put({
+        interpelloId,
+        is_favorite: nextFav,
+        is_candidato: !!currentCand,
+        status: nextFav ? 'preferito' : currentCand ? 'candidato' : 'nessuno',
+        notes: existing?.notes,
+        candidatura_date: existing?.candidatura_date,
+        updated_at: new Date().toISOString(),
+      });
+    }
+    return nextFav;
+  } catch (err) {
+    console.error(`Errore toggle preferito interpello #${interpelloId}:`, err);
+    return false;
+  }
+}
+
+export async function toggleUserCandidato(interpelloId: number): Promise<boolean> {
+  if (!db) return false;
+  try {
+    const existing = await db.userStatuses.get(interpelloId);
+    const currentFav = existing?.is_favorite !== undefined ? existing.is_favorite : existing?.status === 'preferito';
+    const currentCand = existing?.is_candidato !== undefined ? existing.is_candidato : existing?.status === 'candidato';
+    const nextCand = !currentCand;
+
+    if (!nextCand && !currentFav && (!existing?.notes || existing.notes.trim() === '')) {
+      await db.userStatuses.delete(interpelloId);
+    } else {
+      await db.userStatuses.put({
+        interpelloId,
+        is_favorite: !!currentFav,
+        is_candidato: nextCand,
+        status: nextCand ? 'candidato' : currentFav ? 'preferito' : 'nessuno',
+        notes: existing?.notes,
+        candidatura_date: nextCand ? (existing?.candidatura_date || new Date().toISOString()) : undefined,
+        updated_at: new Date().toISOString(),
+      });
+    }
+    return nextCand;
+  } catch (err) {
+    console.error(`Errore toggle candidato interpello #${interpelloId}:`, err);
+    return false;
+  }
+}
+
+export async function saveUserNotes(interpelloId: number, notes: string): Promise<void> {
+  if (!db) return;
+  try {
+    const existing = await db.userStatuses.get(interpelloId);
+    const currentFav = existing?.is_favorite !== undefined ? existing.is_favorite : existing?.status === 'preferito';
+    const currentCand = existing?.is_candidato !== undefined ? existing.is_candidato : existing?.status === 'candidato';
+
+    if (!currentFav && !currentCand && (!notes || notes.trim() === '')) {
+      await db.userStatuses.delete(interpelloId);
+    } else {
+      await db.userStatuses.put({
+        interpelloId,
+        is_favorite: !!currentFav,
+        is_candidato: !!currentCand,
+        status: currentCand ? 'candidato' : currentFav ? 'preferito' : 'nessuno',
+        notes,
+        candidatura_date: existing?.candidatura_date,
+        updated_at: new Date().toISOString(),
+      });
+    }
+  } catch (err) {
+    console.error(`Errore salvataggio note interpello #${interpelloId}:`, err);
   }
 }
 
@@ -89,17 +189,18 @@ export async function saveUserStatus(
   if (!db) return;
   try {
     if (status === 'nessuno' && (!notes || notes.trim() === '')) {
-      // Se lo stato è resettato e non ci sono note, rimuoviamo il record per pulizia
       await db.userStatuses.delete(interpelloId);
     } else {
       const existing = await db.userStatuses.get(interpelloId);
-      const isNewlyCandidato = status === 'candidato' && existing?.status !== 'candidato';
-      
+      const is_favorite = status === 'preferito' || (existing?.is_favorite && status !== 'nessuno');
+      const is_candidato = status === 'candidato' || (existing?.is_candidato && status !== 'nessuno');
       await db.userStatuses.put({
         interpelloId,
+        is_favorite,
+        is_candidato,
         status,
         notes: notes !== undefined ? notes : existing?.notes,
-        candidatura_date: isNewlyCandidato ? new Date().toISOString() : existing?.candidatura_date,
+        candidatura_date: status === 'candidato' ? (existing?.candidatura_date || new Date().toISOString()) : existing?.candidatura_date,
         updated_at: new Date().toISOString(),
       });
     }
@@ -111,10 +212,15 @@ export async function saveUserStatus(
 export async function getUserStatsCounts(): Promise<{ candidati: number; preferiti: number }> {
   if (!db) return { candidati: 0, preferiti: 0 };
   try {
-    const [candidati, preferiti] = await Promise.all([
-      db.userStatuses.where('status').equals('candidato').count(),
-      db.userStatuses.where('status').equals('preferito').count(),
-    ]);
+    const all = await db.userStatuses.toArray();
+    let candidati = 0;
+    let preferiti = 0;
+    for (const item of all) {
+      const is_candidato = item.is_candidato !== undefined ? item.is_candidato : item.status === 'candidato';
+      const is_favorite = item.is_favorite !== undefined ? item.is_favorite : item.status === 'preferito';
+      if (is_candidato) candidati++;
+      if (is_favorite) preferiti++;
+    }
     return { candidati, preferiti };
   } catch (err) {
     console.error('Errore conteggio statistiche IndexedDB:', err);

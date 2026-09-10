@@ -29,14 +29,18 @@ import { Separator } from '@/components/ui/separator';
 interface InterpelloModalProps {
   interpello: Interpello | null;
   onClose: () => void;
-  onUpdateStatus: (id: number, status: 'nessuno' | 'candidato' | 'preferito' | 'ignorato', notes?: string) => void;
+  onTogglePreferito: (id: number) => void;
+  onToggleCandidato: (id: number) => void;
+  onSaveNotes: (id: number, notes: string) => Promise<void> | void;
   userLocation?: UserLocation | null;
 }
 
 export function InterpelloModal({
   interpello,
   onClose,
-  onUpdateStatus,
+  onTogglePreferito,
+  onToggleCandidato,
+  onSaveNotes,
   userLocation,
 }: InterpelloModalProps) {
 
@@ -53,8 +57,12 @@ export function InterpelloModal({
 
   if (!interpello) return null;
 
-  const isCandidato = interpello.status_candidatura === 'candidato';
-  const isPreferito = interpello.status_candidatura === 'preferito';
+  const isCandidato = interpello.is_candidato !== undefined 
+    ? interpello.is_candidato 
+    : interpello.status_candidatura === 'candidato';
+  const isPreferito = interpello.is_preferito !== undefined 
+    ? interpello.is_preferito 
+    : interpello.status_candidatura === 'preferito';
 
   const handleCopy = (text: string, type: 'email' | 'subject') => {
     navigator.clipboard.writeText(text);
@@ -69,7 +77,7 @@ export function InterpelloModal({
 
   const handleSaveNotes = async () => {
     setIsSavingNotes(true);
-    await onUpdateStatus(interpello.id, interpello.status_candidatura, notes);
+    await onSaveNotes(interpello.id, notes);
     setIsSavingNotes(false);
   };
 
@@ -425,23 +433,31 @@ export function InterpelloModal({
         <div className="p-3.5 sm:p-4 border-t border-border bg-card flex items-center justify-between gap-2 shrink-0">
           <div className="flex items-center gap-2">
             <Button
-              variant={isCandidato ? "default" : "outline"}
+              variant={isCandidato ? "secondary" : "outline"}
               size="sm"
-              onClick={() => onUpdateStatus(interpello.id, isCandidato ? 'nessuno' : 'candidato', notes)}
-              className="text-xs h-8 gap-1.5"
+              onClick={() => onToggleCandidato(interpello.id)}
+              className={`text-xs h-8 gap-1.5 transition-colors ${
+                isCandidato 
+                  ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20 hover:bg-emerald-500/20' 
+                  : 'hover:bg-muted'
+              }`}
             >
-              <CheckCircle2 className="w-3.5 h-3.5" />
+              <CheckCircle2 className={`w-3.5 h-3.5 ${isCandidato ? 'stroke-[2.5]' : ''}`} />
               <span>{isCandidato ? 'Candidatura inviata' : 'Segna inviata'}</span>
             </Button>
 
             <Button
               variant={isPreferito ? "secondary" : "outline"}
               size="sm"
-              onClick={() => onUpdateStatus(interpello.id, isPreferito ? 'nessuno' : 'preferito', notes)}
-              className={`text-xs h-8 gap-1.5 ${isPreferito ? 'text-amber-600 dark:text-amber-400 bg-amber-500/10' : ''}`}
+              onClick={() => onTogglePreferito(interpello.id)}
+              className={`text-xs h-8 gap-1.5 transition-colors ${
+                isPreferito 
+                  ? 'text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/20 hover:bg-amber-500/20' 
+                  : 'hover:bg-muted'
+              }`}
             >
               <Bookmark className={`w-3.5 h-3.5 ${isPreferito ? 'fill-current' : ''}`} />
-              <span>{isPreferito ? 'Salvato' : 'Salva'}</span>
+              <span>{isPreferito ? 'Salvato nei preferiti' : 'Salva nei preferiti'}</span>
             </Button>
           </div>
 

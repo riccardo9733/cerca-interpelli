@@ -18,9 +18,12 @@ import {
 import { 
   migrateLegacyLocalStorage, 
   setUserSetting, 
+  getUserSetting,
   removeUserSetting, 
   getAllUserStatuses, 
-  saveUserStatus, 
+  toggleUserFavorite,
+  toggleUserCandidato,
+  saveUserNotes,
   getUserStatsCounts 
 } from '@/lib/db';
 import { Interpello, Stats, UserLocation } from '@/types/interpello';
@@ -56,59 +59,57 @@ export default function HomePage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Caricamento preferenze iniziali da Dexie (con migrazione automatica da localStorage se presente)
+  // Inizializzazione impostazioni salvate su IndexedDB (Dexie) al mount
   useEffect(() => {
     async function initSettings() {
-      try {
-        const { migratedLocation, migratedRadius, migratedFilterList } = await migrateLegacyLocalStorage();
-        if (migratedLocation) setUserLocation(migratedLocation);
-        if (migratedRadius !== null) setMaxRadiusKm(migratedRadius);
-        setFilterByDistanceInList(migratedFilterList);
-      } catch (e) {
-        console.error('Errore nel recupero impostazioni da Dexie:', e);
-      }
+      // Migrazione iniziale trasparente da localStorage se presente
+      await migrateLegacyLocalStorage();
+
+      const [savedLoc, savedRadius, savedFilterList] = await Promise.all([
+        getUserSetting<UserLocation | null>('user_location', null),
+        getUserSetting<number | null>('max_radius_km', null),
+        getUserSetting<boolean>('filter_by_distance_in_list', false),
+      ]);
+
+      if (savedLoc) setUserLocation(savedLoc);
+      if (savedRadius !== null) setMaxRadiusKm(savedRadius);
+      if (savedFilterList !== null) setFilterByDistanceInList(savedFilterList);
     }
+
     initSettings();
   }, []);
 
+  // Handler per aggiornare e salvare le impostazioni in Dexie
   const handleUserLocationChange = async (loc: UserLocation | null) => {
     setUserLocation(loc);
-    try {
-      if (loc) {
-        await setUserSetting('user_location', loc);
-      } else {
-        await removeUserSetting('user_location');
-      }
-    } catch (e) {
-      console.error('Errore salvataggio posizione utente:', e);
+    if (loc) {
+      await setUserSetting('user_location', loc);
+    } else {
+      await removeUserSetting('user_location');
     }
   };
 
   const handleMaxRadiusKmChange = async (radius: number | null) => {
     setMaxRadiusKm(radius);
-    try {
+    if (radius !== null) {
       await setUserSetting('max_radius_km', radius);
-    } catch (e) {
-      console.error('Errore salvataggio raggio max:', e);
+    } else {
+      await removeUserSetting('max_radius_km');
     }
   };
 
-  const handleFilterByDistanceInListChange = async (val: boolean) => {
-    setFilterByDistanceInList(val);
-    try {
-      await setUserSetting('filter_list_by_dist', val);
-    } catch (e) {
-      console.error('Errore salvataggio filtro lista per distanza:', e);
-    }
+  const handleFilterByDistanceInListChange = async (enabled: boolean) => {
+    setFilterByDistanceInList(enabled);
+    await setUserSetting('filter_by_distance_in_list', enabled);
   };
 
-  // Caricamento dati (Backend interpelli + IndexedDB status locale)
+  // Caricamento dati combinati (backend + Dexie IndexedDB locale)
   const loadData = useCallback(async (currentFilters: FilterParams) => {
     setIsLoading(true);
     setError(null);
     try {
       // Per il backend non filtriamo per status se è candidato/preferito/ignorato perché quei dati risiedono in Dexie
-      const backendFilters: FilterParams = {
+      const params: FilterParams = {
         ...currentFilters,
         status: currentFilters.status === 'candidato' || currentFilters.status === 'preferito' || currentFilters.status === 'ignorato' 
           ? 'tutti' 
@@ -116,7 +117,7 @@ export default function HomePage() {
       };
 
       const [items, statsData, classiData, oreData, userStatuses, localCounts] = await Promise.all([
-        fetchInterpelli(backendFilters),
+        fetchInterpelli(params),
         fetchStats(),
         fetchClassi(),
         fetchOre(),
@@ -124,13 +125,18 @@ export default function HomePage() {
         getUserStatsCounts(),
       ]);
 
-      // Merge locale: abbina a ciascun interpello lo status e le note dell'utente salvati in Dexie
+      // Merge locale: abbina a ciascun interpello i preferiti, la candidatura inviata e le note salvati in Dexie
       const mergedItems = items.map((item) => {
         const userStat = userStatuses[item.id];
+        const isCandidato = !!userStat?.is_candidato;
+        const isPreferito = !!userStat?.is_favorite;
         return {
           ...item,
-          status_candidatura: (userStat?.status || 'nessuno') as 'nessuno' | 'candidato' | 'preferito' | 'ignorato',
+          is_candidato: isCandidato,
+          is_preferito: isPreferito,
+          status_candidatura: (isCandidato ? 'candidato' : isPreferito ? 'preferito' : 'nessuno') as 'nessuno' | 'candidato' | 'preferito' | 'ignorato',
           notes: userStat?.notes !== undefined ? userStat.notes : item.notes,
+          candidatura_date: userStat?.candidatura_date,
         };
       });
 
@@ -174,58 +180,66 @@ export default function HomePage() {
     }
   };
 
-  // Aggiornamento rapido stato candidatura (candidato / preferito) in Dexie (IndexedDB)
-  const handleToggleStatus = async (
-    id: number,
-    currentStatus: string,
-    targetStatus: 'candidato' | 'preferito'
-  ) => {
-    const nextStatus = currentStatus === targetStatus ? 'nessuno' : targetStatus;
-    
-    // Aggiornamento ottimistico dello stato React
+  // Toggle Preferito (non mutuamente esclusivo con candidatura inviata)
+  const handleTogglePreferito = async (id: number) => {
     setInterpelli((prev) =>
       prev.map((item) =>
-        item.id === id ? { ...item, status_candidatura: nextStatus } : item
+        item.id === id ? { ...item, is_preferito: !item.is_preferito } : item
       )
     );
 
     if (selectedInterpello?.id === id) {
-      setSelectedInterpello((prev) => prev ? { ...prev, status_candidatura: nextStatus } : null);
+      setSelectedInterpello((prev) => prev ? { ...prev, is_preferito: !prev.is_preferito } : null);
     }
 
     try {
-      // Salvataggio nel database locale Dexie
-      await saveUserStatus(id, nextStatus);
+      await toggleUserFavorite(id);
       const localCounts = await getUserStatsCounts();
       setStats((prev) => prev ? { ...prev, ...localCounts } : null);
     } catch (err) {
-      console.error('Errore salvataggio status in Dexie:', err);
-      loadData(filters); // rollback
+      console.error('Errore salvataggio preferito in Dexie:', err);
+      loadData(filters);
     }
   };
 
-  const handleUpdateStatusAndNotes = async (
-    id: number,
-    status: 'nessuno' | 'candidato' | 'preferito' | 'ignorato',
-    notes?: string
-  ) => {
+  // Toggle Candidatura Inviata (non mutuamente esclusivo con preferito)
+  const handleToggleCandidato = async (id: number) => {
+    setInterpelli((prev) =>
+      prev.map((item) =>
+        item.id === id ? { ...item, is_candidato: !item.is_candidato } : item
+      )
+    );
+
+    if (selectedInterpello?.id === id) {
+      setSelectedInterpello((prev) => prev ? { ...prev, is_candidato: !prev.is_candidato } : null);
+    }
+
     try {
-      // Salvataggio nel database locale Dexie
-      await saveUserStatus(id, status, notes);
+      await toggleUserCandidato(id);
+      const localCounts = await getUserStatsCounts();
+      setStats((prev) => prev ? { ...prev, ...localCounts } : null);
+    } catch (err) {
+      console.error('Errore salvataggio candidatura in Dexie:', err);
+      loadData(filters);
+    }
+  };
+
+  // Salvataggio note personali in Dexie
+  const handleSaveNotes = async (id: number, notes: string) => {
+    try {
+      await saveUserNotes(id, notes);
       setInterpelli((prev) =>
         prev.map((item) =>
-          item.id === id ? { ...item, status_candidatura: status, notes: notes ?? item.notes } : item
+          item.id === id ? { ...item, notes } : item
         )
       );
       if (selectedInterpello?.id === id) {
         setSelectedInterpello((prev) =>
-          prev ? { ...prev, status_candidatura: status, notes: notes ?? prev.notes } : null
+          prev ? { ...prev, notes } : null
         );
       }
-      const localCounts = await getUserStatsCounts();
-      setStats((prev) => prev ? { ...prev, ...localCounts } : null);
     } catch (err) {
-      console.error('Errore salvataggio note/status in Dexie:', err);
+      console.error('Errore salvataggio note in Dexie:', err);
     }
   };
 
@@ -235,7 +249,11 @@ export default function HomePage() {
 
     // Filtro per status candidatura locale (se impostato su 'candidato' o 'preferito')
     if (filters.status && filters.status !== 'tutti') {
-      list = list.filter((item) => item.status_candidatura === filters.status);
+      if (filters.status === 'candidato') {
+        list = list.filter((item) => item.is_candidato);
+      } else if (filters.status === 'preferito') {
+        list = list.filter((item) => item.is_preferito);
+      }
     }
 
     // Se il filtro per distanza è attivo anche per l'elenco
@@ -370,7 +388,8 @@ export default function HomePage() {
                 key={item.id}
                 interpello={item}
                 onOpenDetails={(item) => setSelectedInterpello(item)}
-                onToggleStatus={handleToggleStatus}
+                onTogglePreferito={handleTogglePreferito}
+                onToggleCandidato={handleToggleCandidato}
                 userLocation={userLocation}
               />
             ))}
@@ -383,7 +402,9 @@ export default function HomePage() {
       <InterpelloModal
         interpello={selectedInterpello}
         onClose={() => setSelectedInterpello(null)}
-        onUpdateStatus={handleUpdateStatusAndNotes}
+        onTogglePreferito={handleTogglePreferito}
+        onToggleCandidato={handleToggleCandidato}
+        onSaveNotes={handleSaveNotes}
         userLocation={userLocation}
       />
 

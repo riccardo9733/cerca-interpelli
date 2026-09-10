@@ -201,11 +201,11 @@ export function FiltersBar({
             onClick={() => onFilterChange({ status: filters.status === 'candidato' ? 'tutti' : 'candidato' })}
             className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors cursor-pointer flex items-center gap-1.5 ${
               filters.status === 'candidato'
-                ? 'border-foreground/30 bg-foreground text-background font-semibold'
+                ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-semibold'
                 : 'border-border bg-card text-muted-foreground hover:text-foreground'
             }`}
           >
-            <CheckCircle2 className="w-3.5 h-3.5" />
+            <CheckCircle2 className={`w-3.5 h-3.5 ${filters.status === 'candidato' ? 'stroke-[2.5]' : ''}`} />
             <span>Inviati</span>
           </button>
 
@@ -213,11 +213,11 @@ export function FiltersBar({
             onClick={() => onFilterChange({ status: filters.status === 'preferito' ? 'tutti' : 'preferito' })}
             className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors cursor-pointer flex items-center gap-1.5 ${
               filters.status === 'preferito'
-                ? 'border-foreground/30 bg-foreground text-background font-semibold'
+                ? 'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300 font-semibold'
                 : 'border-border bg-card text-muted-foreground hover:text-foreground'
             }`}
           >
-            <Bookmark className="w-3.5 h-3.5" />
+            <Bookmark className={`w-3.5 h-3.5 ${filters.status === 'preferito' ? 'fill-current' : ''}`} />
             <span>Salvati</span>
           </button>
 
