@@ -19,6 +19,7 @@ interface FiltersBarProps {
   filters: FilterParams;
   onFilterChange: (newFilters: Partial<FilterParams>) => void;
   availableClassi: string[];
+  availableOre?: number[];
   totalResults: number;
 }
 
@@ -26,6 +27,7 @@ export function FiltersBar({
   filters,
   onFilterChange,
   availableClassi,
+  availableOre = [],
   totalResults,
 }: FiltersBarProps) {
   const [isMobileSheetOpen, setIsMobileSheetOpen] = useState(false);
@@ -42,6 +44,7 @@ export function FiltersBar({
   let activeFilterCount = 0;
   if (filters.classe && filters.classe !== 'tutte') activeFilterCount++;
   if (filters.ordine && filters.ordine !== 'tutti') activeFilterCount++;
+  if (filters.ore && filters.ore !== 'tutte') activeFilterCount++;
   if (filters.status && filters.status !== 'tutti') activeFilterCount++;
   if (filters.only_active) activeFilterCount++;
   if (filters.sort && filters.sort !== 'date_desc') activeFilterCount++;
@@ -51,6 +54,7 @@ export function FiltersBar({
       search: '',
       classe: 'tutte',
       ordine: 'tutti',
+      ore: 'tutte',
       status: 'tutti',
       only_active: false,
       sort: 'date_desc',
@@ -82,7 +86,7 @@ export function FiltersBar({
         </div>
 
         {/* Dropdown Classe Concorso (Desktop) */}
-        <div className="hidden md:block w-52 shrink-0">
+        <div className="hidden md:block w-48 shrink-0">
           <select
             value={filters.classe || 'tutte'}
             onChange={(e) => onFilterChange({ classe: e.target.value })}
@@ -97,8 +101,30 @@ export function FiltersBar({
           </select>
         </div>
 
-        {/* Ordinamento (Desktop) */}
+        {/* Dropdown Ore Settimanali (Desktop) */}
         <div className="hidden md:block w-48 shrink-0">
+          <select
+            value={filters.ore || 'tutte'}
+            onChange={(e) => onFilterChange({ ore: e.target.value })}
+            className="h-10 w-full rounded-lg border border-input bg-card px-3 text-xs font-medium text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer"
+          >
+            <option value="tutte">Tutti gli orari</option>
+            <option value="intera">Cattedra intera (≥ 18h)</option>
+            <option value="spezzone">Spezzoni orari (&lt; 18h)</option>
+            {availableOre.length > 0 && (
+              <optgroup label="Ore specifiche">
+                {availableOre.map((o) => (
+                  <option key={o} value={o.toString()}>
+                    {o} ore settimanali
+                  </option>
+                ))}
+              </optgroup>
+            )}
+          </select>
+        </div>
+
+        {/* Ordinamento (Desktop) */}
+        <div className="hidden md:block w-44 shrink-0">
           <select
             value={filters.sort || 'date_desc'}
             onChange={(e) => onFilterChange({ sort: e.target.value })}
@@ -232,6 +258,29 @@ export function FiltersBar({
                     Classe {cls}
                   </option>
                 ))}
+              </select>
+            </div>
+
+            {/* Selettore Ore Settimanali */}
+            <div className="space-y-1.5">
+              <label className="font-medium text-foreground">Ore settimanali / Orario</label>
+              <select
+                value={filters.ore || 'tutte'}
+                onChange={(e) => onFilterChange({ ore: e.target.value })}
+                className="h-10 w-full rounded-lg border border-input bg-card px-3 text-xs font-medium text-foreground"
+              >
+                <option value="tutte">Tutti gli orari</option>
+                <option value="intera">Cattedra intera (≥ 18h)</option>
+                <option value="spezzone">Spezzoni orari (&lt; 18h)</option>
+                {availableOre.length > 0 && (
+                  <optgroup label="Ore specifiche">
+                    {availableOre.map((o) => (
+                      <option key={o} value={o.toString()}>
+                        {o} ore settimanali
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
               </select>
             </div>
 

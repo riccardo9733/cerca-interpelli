@@ -6,6 +6,7 @@ export interface FilterParams {
   search?: string;
   classe?: string;
   ordine?: string;
+  ore?: string;
   status?: string;
   only_active?: boolean;
   sort?: string;
@@ -16,6 +17,7 @@ export async function fetchInterpelli(params: FilterParams = {}): Promise<Interp
   if (params.search) query.append('search', params.search);
   if (params.classe && params.classe !== 'tutte') query.append('classe', params.classe);
   if (params.ordine && params.ordine !== 'tutti') query.append('ordine', params.ordine);
+  if (params.ore && params.ore !== 'tutte') query.append('ore', params.ore);
   if (params.status && params.status !== 'tutti') query.append('status', params.status);
   if (params.only_active) query.append('only_active', 'true');
   if (params.sort) query.append('sort', params.sort);
@@ -41,6 +43,16 @@ export async function fetchStats(): Promise<Stats> {
 
 export async function fetchClassi(): Promise<string[]> {
   const res = await fetch(`${API_BASE_URL}/api/classi`, {
+    cache: 'no-store',
+  });
+  if (!res.ok) {
+    return [];
+  }
+  return res.json();
+}
+
+export async function fetchOre(): Promise<number[]> {
+  const res = await fetch(`${API_BASE_URL}/api/ore`, {
     cache: 'no-store',
   });
   if (!res.ok) {

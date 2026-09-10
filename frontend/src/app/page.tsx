@@ -10,6 +10,7 @@ import {
   fetchInterpelli, 
   fetchStats, 
   fetchClassi, 
+  fetchOre,
   updateInterpelloStatus, 
   triggerManualSync,
   FilterParams 
@@ -22,6 +23,7 @@ export default function HomePage() {
   const [interpelli, setInterpelli] = useState<Interpello[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [availableClassi, setAvailableClassi] = useState<string[]>([]);
+  const [availableOre, setAvailableOre] = useState<number[]>([]);
   const [activeView, setActiveView] = useState<'list' | 'map'>('list');
   const [selectedInterpello, setSelectedInterpello] = useState<Interpello | null>(null);
   
@@ -29,6 +31,7 @@ export default function HomePage() {
     search: '',
     classe: 'tutte',
     ordine: 'tutti',
+    ore: 'tutte',
     status: 'tutti',
     only_active: false,
     sort: 'date_desc',
@@ -43,14 +46,16 @@ export default function HomePage() {
     setIsLoading(true);
     setError(null);
     try {
-      const [items, statsData, classiData] = await Promise.all([
+      const [items, statsData, classiData, oreData] = await Promise.all([
         fetchInterpelli(currentFilters),
         fetchStats(),
         fetchClassi(),
+        fetchOre(),
       ]);
       setInterpelli(items);
       setStats(statsData);
       setAvailableClassi(classiData);
+      setAvailableOre(oreData);
     } catch (err: any) {
       console.error('Errore durante caricamento:', err);
       setError(err.message || 'Impossibile connettersi al server locale');
@@ -147,6 +152,7 @@ export default function HomePage() {
           filters={filters}
           onFilterChange={handleFilterChange}
           availableClassi={availableClassi}
+          availableOre={availableOre}
           totalResults={interpelli.length}
         />
 

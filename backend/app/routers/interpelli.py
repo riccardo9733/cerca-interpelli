@@ -80,6 +80,7 @@ def get_interpelli(
     search: Optional[str] = Query(None, description="Testo di ricerca"),
     classe: Optional[str] = Query(None, description="Classe di concorso"),
     ordine: Optional[str] = Query(None, description="Ordine di scuola"),
+    ore: Optional[str] = Query(None, description="Filtro ore settimanali (es. 'intera', 'spezzone', o numero '24')"),
     status: Optional[str] = Query(None, description="Filtro stato candidatura"),
     only_active: bool = Query(False, description="Escludi bandi già scaduti"),
     sort: str = Query("date_desc", description="Ordinamento: date_desc, scadenza_asc, school_asc")
@@ -101,6 +102,15 @@ def get_interpelli(
         if ordine and ordine != "tutti":
             conditions.append("ordine_scuola = ?")
             params.append(ordine)
+
+        if ore and ore != "tutte":
+            if ore == "intera":
+                conditions.append("(CAST(ore_settimanali AS INTEGER) >= 18 OR ore_settimanali LIKE '%cattedra intera%')")
+            elif ore == "spezzone":
+                conditions.append("((CAST(ore_settimanali AS INTEGER) > 0 AND CAST(ore_settimanali AS INTEGER) < 18) OR ore_settimanali LIKE '%spezzone%')")
+            elif ore.isdigit():
+                conditions.append("CAST(ore_settimanali AS INTEGER) = ?")
+                params.append(int(ore))
 
         if status and status != "tutti":
             conditions.append("status_candidatura = ?")
@@ -147,6 +157,18 @@ def get_available_classi():
             except Exception:
                 pass
         return sorted(list(classes))
+
+@router.get("/ore", response_model=List[int])
+def get_available_ore():
+    """Ritorna le ore settimanali distinte presenti nel database in ordine decrescente"""
+    with get_db() as conn:
+        rows = conn.execute("""
+            SELECT DISTINCT CAST(ore_settimanali AS INTEGER) as ore_val 
+            FROM interpelli 
+            WHERE ore_settimanali IS NOT NULL AND CAST(ore_settimanali AS INTEGER) > 0
+            ORDER BY ore_val DESC
+        """).fetchall()
+        return [r["ore_val"] for r in rows]
 
 @router.get("/stats", response_model=StatsResponse)
 def get_stats():
