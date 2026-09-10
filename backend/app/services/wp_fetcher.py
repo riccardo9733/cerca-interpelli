@@ -88,10 +88,17 @@ def sync_interpelli() -> Dict[str, Any]:
 
             # 4. Risoluzione geolocalizzazione (Coordinate, Indirizzo e Scuola)
             school_target = meta["school_name"] or title
+            school_code = meta.get("school_code")
+            if not school_code and meta.get("email_candidatura"):
+                m_email_code = re.search(r'\b(PD[A-Z0-9]{8})\b', meta["email_candidatura"], re.IGNORECASE)
+                if m_email_code:
+                    school_code = m_email_code.group(1).upper()
+
             geo_info = geocoder.resolve_location(
                 school_name=school_target,
                 school_city=meta["school_city"],
-                address_hint=meta["school_address"]
+                address_hint=meta["school_address"],
+                school_code=school_code
             )
 
             # 5. Salvataggio su database con transazione breve

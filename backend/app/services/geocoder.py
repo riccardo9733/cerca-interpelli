@@ -29,7 +29,7 @@ class SchoolGeocoder:
             except Exception as e:
                 logger.error(f"Errore nel caricamento del database scuole: {e}")
 
-    def resolve_location(self, school_name: str, school_city: Optional[str] = None, address_hint: Optional[str] = None) -> Dict[str, Any]:
+    def resolve_location(self, school_name: str, school_city: Optional[str] = None, address_hint: Optional[str] = None, school_code: Optional[str] = None) -> Dict[str, Any]:
         """
         Risolve nome scuola, indirizzo e coordinate (lat, lon).
         1. Ricerca nel catalogo locale padova_schools.json per codice meccanografico o alias
@@ -40,9 +40,23 @@ class SchoolGeocoder:
         clean_name = (school_name or "").lower().strip()
         clean_city = (school_city or "").lower().strip()
 
-        # 1. Ricerca nel catalogo locale
+        # 1. Ricerca nel catalogo per codice meccanografico esplicito (se fornito)
+        if school_code:
+            code_clean = school_code.strip().upper()
+            for school in self.schools:
+                if school.get("code") and school["code"].upper() == code_clean:
+                    return {
+                        "school_name": school["name"],
+                        "school_code": school["code"],
+                        "school_address": school["address"],
+                        "school_city": school["city"],
+                        "latitude": school["lat"],
+                        "longitude": school["lon"],
+                    }
+
+        # 2. Ricerca nel catalogo locale per codice o alias con confini di parola esatti
         for school in self.schools:
-            # Controllo codice meccanografico
+            # Controllo codice meccanografico nel nome
             if school.get("code") and school["code"].lower() in clean_name:
                 return {
                     "school_name": school["name"],
@@ -52,9 +66,10 @@ class SchoolGeocoder:
                     "latitude": school["lat"],
                     "longitude": school["lon"],
                 }
-            # Controllo alias
+            # Controllo alias con confini di parola (\b) per evitare che "i ic" matchi dentro "ii ic"
             for alias in school.get("aliases", []):
-                if alias in clean_name or (alias in clean_city and len(alias) > 3):
+                pattern = rf'\b{re.escape(alias)}\b'
+                if re.search(pattern, clean_name, re.IGNORECASE) or (clean_city and len(alias) > 3 and re.search(pattern, clean_city, re.IGNORECASE)):
                     return {
                         "school_name": school["name"],
                         "school_code": school.get("code"),

@@ -43,12 +43,12 @@ def parse_italian_date(date_str: str) -> Optional[datetime]:
         logger.debug(f"Errore parsing data '{date_str}': {e}")
     return None
 
-def extract_classi_concorso(text: str) -> List[str]:
+def extract_classi_concorso(text: str, title: Optional[str] = None) -> List[str]:
     found = set()
     
-    # Classi canoniche maiuscole
+    # 1. Classi canoniche maiuscole (ADAA = Sostegno Infanzia, ADEE = Primaria, ADMM = Medie, ADSS = Superiori)
     known_codes = [
-        "ADEE", "ADMM", "ADSS", "ADEI", "EEEE", "AAAA", "PPPP"
+        "ADAA", "ADEE", "ADMM", "ADSS", "ADEI", "EEEE", "AAAA", "PPPP"
     ]
     for code in known_codes:
         if re.search(rf'\b{code}\b', text, re.IGNORECASE):
@@ -62,24 +62,37 @@ def extract_classi_concorso(text: str) -> List[str]:
         if len(clean_code) == 3 and clean_code[1:].isdigit():
             clean_code = f"{clean_code[0]}0{clean_code[1:]}"
         found.add(clean_code)
+
+    if found:
+        return sorted(list(found))
         
-    # Inferenza da linguaggio naturale se non trovate
-    lower_text = text.lower()
-    if not found:
-        if "sostegno" in lower_text:
-            if "primaria" in lower_text or "elementare" in lower_text:
+    # 2. Inferenza da linguaggio naturale: prima nel titolo (privo di intestazioni boilerplate), poi nel testo
+    candidates = []
+    if title:
+        candidates.append(title.lower())
+    candidates.append(text.lower())
+
+    for t in candidates:
+        if "sostegno" in t:
+            if "infanzia" in t or "matern" in t:
+                found.add("ADAA")
+                break
+            elif "primaria" in t or "elementare" in t:
                 found.add("ADEE")
-            elif "secondaria di primo grado" in lower_text or "medie" in lower_text:
+                break
+            elif "secondaria di primo grado" in t or "medie" in t or "i grado" in t:
                 found.add("ADMM")
-            elif "secondaria di secondo grado" in lower_text or "superiori" in lower_text:
+                break
+            elif "secondaria di secondo grado" in t or "superiori" in t or "ii grado" in t:
                 found.add("ADSS")
-            elif "infanzia" in lower_text or "matern" in lower_text:
-                found.add("ADEI")
-        elif "posto comune" in lower_text or "comune" in lower_text:
-            if "primaria" in lower_text:
-                found.add("EEEE")
-            elif "infanzia" in lower_text:
+                break
+        elif "posto comune" in t or "comune" in t:
+            if "infanzia" in t or "matern" in t:
                 found.add("AAAA")
+                break
+            elif "primaria" in t or "elementare" in t:
+                found.add("EEEE")
+                break
                 
     return sorted(list(found))
 
@@ -218,23 +231,39 @@ def extract_email_and_subject(text: str) -> Tuple[Optional[str], Optional[str]]:
         
     return email, subj
 
-def extract_ore_e_posti(text: str) -> Tuple[Optional[str], Optional[int]]:
+def extract_ore_e_posti(text: str, ordine: Optional[str] = None) -> Tuple[Optional[str], Optional[int]]:
     ore = None
     posti = None
     
-    # Ore: 24 ORE, 18 ore settimanali
+    # 1. Riconoscimento riga tabellare tipo "ADAA 1 25 16/10/2026"
+    m_tab = re.search(r'\b(?:ADAA|ADEE|ADMM|ADSS|AAAA|EEEE|[AB]\d{2,3})\s+(\d+)\s+(\d{1,2})\s+\d{1,2}[/-]\d{1,2}[/-]\d{2,4}', text, re.IGNORECASE)
+    if m_tab:
+        posti = int(m_tab.group(1))
+        ore = f"{m_tab.group(2)} ore settimanali"
+        return ore, posti
+
+    # 2. Ore esplicite: 24 ORE, 18 ore settimanali, 25h
     m_ore = re.search(r'\b(\d{1,2})\s*(?:ore|h)\b', text, re.IGNORECASE)
     if m_ore:
         ore = f"{m_ore.group(1)} ore settimanali"
-    elif "cattedra intera" in text.lower():
-        ore = "Cattedra intera"
+    elif "cattedra intera" in text.lower() or "posto intero" in text.lower():
+        if ordine == "Infanzia":
+            ore = "25 ore settimanali"
+        elif ordine == "Primaria":
+            ore = "24 ore settimanali"
+        elif ordine in ["Secondaria I grado", "Secondaria II grado"]:
+            ore = "18 ore settimanali"
+        else:
+            ore = "Cattedra intera"
     elif "spezzone" in text.lower():
         ore = "Spezzone orario"
         
-    # Posti: 15 POSTI, 8 posti sostegno
+    # 3. Posti: 15 POSTI, 8 posti sostegno, 1 posto
     m_posti = re.search(r'(?:n[°\.]?\s*)?(\d+)\s+posti\b', text, re.IGNORECASE)
     if m_posti:
         posti = int(m_posti.group(1))
+    elif re.search(r'\b1\s+posto\b|un\s+posto\b|posto\s+intero\b', text, re.IGNORECASE):
+        posti = 1
         
     return ore, posti
 
@@ -248,7 +277,7 @@ def extract_metadata(title: str, html_content: str, pdf_text: Optional[str], wp_
     full_text = f"{title}\n{html_content}\n{pdf_text or ''}"
     
     # 1. Classi di concorso
-    classi = extract_classi_concorso(full_text)
+    classi = extract_classi_concorso(full_text, title=title)
     
     # 2. Scadenza
     scadenza_iso, scadenza_raw = extract_scadenza(title, pdf_text or full_text)
@@ -310,23 +339,32 @@ def extract_metadata(title: str, html_content: str, pdf_text: Optional[str], wp_
     # 4. Scuola & Sede
     school_info = extract_school_info(title, pdf_text or full_text)
     
-    # 5. Ore e posti
-    ore, posti = extract_ore_e_posti(pdf_text or full_text)
-    
-    # 6. Email e Oggetto
-    email, oggetto_email = extract_email_and_subject(pdf_text or full_text)
-    
-    # 7. Ordine scuola
+    # 5. Ordine scuola
     ordine = "Altro"
+    lt_title = title.lower()
     lt = full_text.lower()
-    if any(c in classi for c in ["ADEE", "EEEE"]) or "primaria" in lt:
-        ordine = "Primaria"
-    elif any(c in classi for c in ["ADMM"]) or "secondaria di primo grado" in lt or "medie" in lt:
-        ordine = "Secondaria I grado"
-    elif any(c in classi for c in ["ADSS"]) or "secondaria di secondo grado" in lt or "superiori" in lt:
-        ordine = "Secondaria II grado"
-    elif any(c in classi for c in ["ADEI", "AAAA"]) or "infanzia" in lt:
+    if any(c in classi for c in ["ADAA", "AAAA"]) or "infanzia" in lt_title or "matern" in lt_title:
         ordine = "Infanzia"
+    elif any(c in classi for c in ["ADEE", "EEEE"]) or "primaria" in lt_title or "elementar" in lt_title:
+        ordine = "Primaria"
+    elif any(c in classi for c in ["ADMM"]) or "secondaria di primo grado" in lt_title or "medie" in lt_title:
+        ordine = "Secondaria I grado"
+    elif any(c in classi for c in ["ADSS"]) or "secondaria di secondo grado" in lt_title or "superiori" in lt_title:
+        ordine = "Secondaria II grado"
+    elif "infanzia" in lt or "matern" in lt:
+        ordine = "Infanzia"
+    elif "primaria" in lt or "elementar" in lt:
+        ordine = "Primaria"
+    elif "secondaria di primo grado" in lt or "medie" in lt:
+        ordine = "Secondaria I grado"
+    elif "secondaria di secondo grado" in lt or "superiori" in lt:
+        ordine = "Secondaria II grado"
+
+    # 6. Ore e posti
+    ore, posti = extract_ore_e_posti(pdf_text or full_text, ordine=ordine)
+    
+    # 7. Email e Oggetto
+    email, oggetto_email = extract_email_and_subject(pdf_text or full_text)
 
     # 8. Tipo posto
     tipo_posto = "Sostegno" if ("sostegno" in lt or any("AD" in c for c in classi)) else "Posto Comune"

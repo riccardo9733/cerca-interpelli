@@ -102,17 +102,57 @@ def get_interpelli(
             params.append(c)
 
         if ordine and ordine != "tutti":
-            conditions.append("ordine_scuola = ?")
-            params.append(ordine)
+            if ordine == "Altro":
+                conditions.append("(ordine_scuola = 'Altro' OR ordine_scuola IS NULL)")
+            else:
+                # Include sia l'ordine selezionato sia eventuali bandi non riconosciuti ('Altro' o NULL)
+                # per garantire che nessun interpello con refusi o errori di estrazione venga nascosto
+                conditions.append("(ordine_scuola = ? OR ordine_scuola = 'Altro' OR ordine_scuola IS NULL)")
+                params.append(ordine)
 
         if ore and ore != "tutte":
-            if ore == "intera":
-                conditions.append("(CAST(ore_settimanali AS INTEGER) >= 18 OR ore_settimanali LIKE '%cattedra intera%')")
+            if ore == "non_specificate":
+                conditions.append("(ore_settimanali IS NULL OR ore_settimanali = '' OR ore_settimanali LIKE '%da definire%')")
+            elif ore == "intera":
+                conditions.append("""(
+                    CAST(ore_settimanali AS INTEGER) >= 18 
+                    OR ore_settimanali LIKE '%cattedra intera%'
+                    OR ore_settimanali LIKE '%posto intero%'
+                    OR title LIKE '%posto intero%'
+                    OR title LIKE '%cattedra intera%'
+                    OR ore_settimanali IS NULL 
+                    OR ore_settimanali = ''
+                )""")
             elif ore == "spezzone":
-                conditions.append("((CAST(ore_settimanali AS INTEGER) > 0 AND CAST(ore_settimanali AS INTEGER) < 18) OR ore_settimanali LIKE '%spezzone%')")
+                conditions.append("""(
+                    (CAST(ore_settimanali AS INTEGER) > 0 AND CAST(ore_settimanali AS INTEGER) < 18) 
+                    OR ore_settimanali LIKE '%spezzone%'
+                    OR title LIKE '%spezzone%'
+                    OR ore_settimanali IS NULL 
+                    OR ore_settimanali = ''
+                )""")
             elif ore.isdigit():
-                conditions.append("CAST(ore_settimanali AS INTEGER) = ?")
-                params.append(int(ore))
+                ore_num = int(ore)
+                # Tollerante per non perdere nuovi interpelli con errori:
+                # include ore estratte, menzioni nel titolo o nel testo grezzo, E bandi con ore non riconosciute (NULL)
+                conditions.append("""(
+                    CAST(ore_settimanali AS INTEGER) = ?
+                    OR ore_settimanali LIKE ?
+                    OR title LIKE ?
+                    OR content_raw LIKE ?
+                    OR content_raw LIKE ?
+                    OR content_raw LIKE ?
+                    OR ore_settimanali IS NULL
+                    OR ore_settimanali = ''
+                )""")
+                params.extend([
+                    ore_num,
+                    f"%{ore_num} ore%",
+                    f"%{ore_num}%",
+                    f"%{ore_num} ore%",
+                    f"%{ore_num}h%",
+                    f"%{ore_num} h%"
+                ])
 
         if status and status != "tutti":
             conditions.append("status_candidatura = ?")
@@ -162,7 +202,8 @@ def get_available_classi():
 
 @router.get("/ore", response_model=List[int])
 def get_available_ore():
-    """Ritorna le ore settimanali distinte presenti nel database in ordine decrescente"""
+    """Ritorna le ore settimanali distinte presenti nel database in ordine decrescente, garantendo la presenza delle ore canoniche scolastiche (25, 24, 18)"""
+    standard_hours = {25, 24, 18}
     with get_db() as conn:
         rows = conn.execute("""
             SELECT DISTINCT CAST(ore_settimanali AS INTEGER) as ore_val 
@@ -170,7 +211,9 @@ def get_available_ore():
             WHERE ore_settimanali IS NOT NULL AND CAST(ore_settimanali AS INTEGER) > 0
             ORDER BY ore_val DESC
         """).fetchall()
-        return [r["ore_val"] for r in rows]
+        db_hours = {r["ore_val"] for r in rows if r["ore_val"]}
+        all_hours = standard_hours.union(db_hours)
+        return sorted(list(all_hours), reverse=True)
 
 @router.get("/stats", response_model=StatsResponse)
 def get_stats():

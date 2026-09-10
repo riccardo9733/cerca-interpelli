@@ -125,9 +125,17 @@ export function InterpelloCard({
           )}
 
           {/* Grado */}
-          {interpello.ordine_scuola && (
+          {interpello.ordine_scuola && interpello.ordine_scuola !== 'Altro' ? (
             <Badge variant="secondary" className="text-[11px] font-normal">
               {interpello.ordine_scuola}
+            </Badge>
+          ) : (
+            <Badge 
+              variant="outline" 
+              className="text-[11px] font-normal text-amber-600 dark:text-amber-400 border-amber-500/30 bg-amber-50/50 dark:bg-amber-950/20"
+              title="Grado scolastico non classificato con certezza: visibile in tutti i gradi per non perdere nessun bando"
+            >
+              Grado da verificare
             </Badge>
           )}
 
@@ -139,9 +147,17 @@ export function InterpelloCard({
           )}
 
           {/* Ore / Posti */}
-          {interpello.ore_settimanali && (
+          {interpello.ore_settimanali ? (
             <Badge variant="secondary" className="text-[11px] font-normal font-mono">
               {interpello.ore_settimanali}
+            </Badge>
+          ) : (
+            <Badge 
+              variant="outline" 
+              className="text-[11px] font-normal text-amber-600 dark:text-amber-400 border-amber-500/30 bg-amber-50/50 dark:bg-amber-950/20 font-mono"
+              title="Ore settimanali non specificate o non rilevate: visibile per tutti gli orari"
+            >
+              Ore da bando
             </Badge>
           )}
           {interpello.posti_disponibili && (
