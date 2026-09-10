@@ -352,7 +352,7 @@
   },
   {
     "name": "IC Piombino Dese",
-    "code": "PDIC86400L",
+    "code": "PDIC86300R",
     "city": "Piombino Dese",
     "address": "Via Dante 9, 35017 Piombino Dese (PD)",
     "lat": 45.6025,
@@ -396,13 +396,13 @@
     "aliases": ["mestrino", "ic mestrino"]
   },
   {
-    "name": "IC Villafranca Padovana",
-    "code": "PDIC87200G",
+    "name": "IC Villafranca Padovana e Limena",
+    "code": "PDIC86400L",
     "city": "Villafranca Padovana",
-    "address": "Via Campodoro 2, 35010 Villafranca Padovana (PD)",
+    "address": "Via Taggì di Sopra 12, 35010 Villafranca Padovana (PD)",
     "lat": 45.4851,
     "lon": 11.7915,
-    "aliases": ["villafranca", "villafranca padovana", "ic villafranca"]
+    "aliases": ["villafranca", "villafranca padovana", "ic villafranca", "limena", "villafranca padovana e limena", "villafranca e limena"]
   },
   {
     "name": "IC Curtarolo Campo San Martino",
