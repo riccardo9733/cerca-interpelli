@@ -29,47 +29,76 @@ def row_to_interpello_response(row: dict) -> dict:
     except Exception:
         pass
 
+    wp_date_only = wp_dt.strftime("%Y-%m-%d") if wp_dt else None
+    
     # Rilevamento Anomalie nel testo originale della scuola
     raw_content = f"{item.get('title', '')} {item.get('content_raw', '')}"
     is_recent_post = wp_dt and (now - wp_dt).total_seconds() <= 14 * 86400
+
+    # Condizione richiesta: se la data di pubblicazione è più recente della data di conclusione servizio
+    pub_is_more_recent_than_fine = False
+    if wp_date_only and item.get("periodo_fine") and wp_date_only > item["periodo_fine"]:
+        pub_is_more_recent_than_fine = True
+        has_date_anomaly = True
+        date_anomaly_desc = f"Data di pubblicazione ({wp_date_only}) più recente della conclusione servizio indicata ({item['periodo_fine']}): probabile refuso della scuola per l'anno successivo. Bando considerato attivo."
 
     if is_recent_post:
         # Caso A: La scuola ha scritto '30/06/2026' o simile per un bando pubblicato a settembre 2026
         if "30/06/2026" in raw_content and wp_dt.month >= 8:
             has_date_anomaly = True
-            date_anomaly_desc = "La scuola ha indicato nel testo '30/06/2026' come termine supplenza (data precedente alla pubblicazione). È un probabile refuso per l'a.s. 2026/2027: bando attivo."
+            if not date_anomaly_desc:
+                date_anomaly_desc = "La scuola ha indicato nel testo '30/06/2026' come termine supplenza (data precedente alla pubblicazione). È un probabile refuso per l'a.s. 2026/2027: bando attivo."
         # Caso B: Scadenza con l'anno precedente
         elif item.get("scadenza_raw") and "2025" in item["scadenza_raw"]:
             has_date_anomaly = True
-            date_anomaly_desc = f"Nel testo la scadenza è indicata con anno precedente ('{item['scadenza_raw']}'): normalizzato al 2026 per bando recente."
+            if not date_anomaly_desc:
+                date_anomaly_desc = f"Nel testo la scadenza è indicata con anno precedente ('{item['scadenza_raw']}'): normalizzato all'anno corrente per bando recente."
         # Caso C: Periodo fine originario precedente a data pubblicazione
-        elif item.get("periodo_fine") and item["periodo_fine"] < wp_dt.strftime("%Y-%m-%d"):
+        elif item.get("periodo_fine") and wp_date_only and item["periodo_fine"] < wp_date_only:
             has_date_anomaly = True
-            date_anomaly_desc = "Data di termine indicata precedente alla pubblicazione dell'avviso. Probabile refuso della scuola: bando considerato attivo."
+            if not date_anomaly_desc:
+                date_anomaly_desc = "Data di termine indicata precedente alla pubblicazione dell'avviso. Probabile refuso della scuola: bando considerato attivo."
 
     if item.get("scadenza"):
         try:
             exp = datetime.fromisoformat(item["scadenza"])
             diff = (exp - now).total_seconds()
             time_remaining_seconds = int(diff)
-            is_expired = diff <= 0
+            
+            # Se la scadenza è precedente alla data di pubblicazione, è un refuso evidente
+            if wp_dt and exp < wp_dt:
+                has_date_anomaly = True
+                is_expired = False
+                if not date_anomaly_desc:
+                    date_anomaly_desc = "Data di scadenza indicata nel bando precedente alla pubblicazione (refuso della scuola): bando considerato attivo."
+            elif pub_is_more_recent_than_fine or (has_date_anomaly and is_recent_post and diff <= 0):
+                # Se c'è un'incongruenza di date (es. data di fine servizio nel passato rispetto alla pubblicazione)
+                # il bando va COMUNQUE considerato attivo!
+                is_expired = False
+            else:
+                is_expired = diff <= 0
         except Exception:
             pass
     else:
         # Se non c'è una data/ora di scadenza esplicita:
         if item.get("periodo_fine") and item["periodo_fine"] < today_date:
-            # Se la pubblicazione è recente ma la data di termine è passata, è un refuso della scuola -> MANTIENI ATTIVO con flag anomalia!
-            if is_recent_post:
+            # Se la pubblicazione è più recente della fine servizio o è recente, refuso scuola -> MANTIENI ATTIVO con ?
+            if pub_is_more_recent_than_fine or is_recent_post:
                 has_date_anomaly = True
                 is_expired = False
                 if not date_anomaly_desc:
-                    date_anomaly_desc = "La data di termine indicata è nel passato ma la pubblicazione è recente: probabile errore della scuola, bando attivo."
+                    date_anomaly_desc = "Data di conclusione servizio antecedente alla pubblicazione (refuso della scuola): bando considerato attivo."
             else:
                 is_expired = True
         else:
             # Se l'avviso è stato pubblicato oltre 7 giorni fa senza scadenza futura -> SCADUTO
             if wp_dt and (now - wp_dt).total_seconds() > 7 * 86400:
                 is_expired = True
+
+    # REGOLA GENERALE ASSOLUTA: se la pubblicazione è più recente della fine del servizio, il bando È ATTIVO con "?"
+    if pub_is_more_recent_than_fine:
+        is_expired = False
+        has_date_anomaly = True
 
     item["is_expired"] = is_expired
     item["time_remaining_seconds"] = time_remaining_seconds
@@ -127,14 +156,17 @@ def get_interpelli(
 
         if only_active:
             now_iso = datetime.now().isoformat()
-            today_date = datetime.now().strftime("%Y-%m-%d")
-            seven_days_ago_iso = datetime.fromtimestamp(datetime.now().timestamp() - 7 * 86400).isoformat()
+            recent_post_iso = datetime.fromtimestamp(datetime.now().timestamp() - 14 * 86400).isoformat()
+            # Include bandi con scadenza futura, oppure pubblicati di recente (ultimi 14 giorni),
+            # oppure dove la data di pubblicazione è più recente del termine servizio (evidente refuso della scuola).
             conditions.append("""(
                 (scadenza IS NOT NULL AND scadenza >= ?)
                 OR
-                (scadenza IS NULL AND (periodo_fine IS NULL OR periodo_fine >= ?) AND wp_date >= ?)
+                (periodo_fine IS NOT NULL AND wp_date > periodo_fine)
+                OR
+                wp_date >= ?
             )""")
-            params.extend([now_iso, today_date, seven_days_ago_iso])
+            params.extend([now_iso, recent_post_iso])
 
         where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
 

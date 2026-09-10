@@ -156,12 +156,14 @@ export function InterpelloModal({
           
           {/* Segnalazione Refuso Date (se presente) */}
           {interpello.has_date_anomaly && (
-            <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 flex items-start gap-2.5">
-              <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+            <div className="p-3.5 rounded-lg bg-amber-500/10 border border-amber-500/40 text-amber-950 dark:text-amber-200 flex items-start gap-2.5">
+              <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-amber-500 text-white font-bold text-xs shrink-0 mt-0.5 shadow-xs">
+                ?
+              </span>
               <div className="space-y-0.5">
-                <span className="font-semibold block text-xs">Verifica Date del Bando</span>
+                <span className="font-semibold block text-xs">Bando Attivo · Verifica Date (Refuso Scuola)</span>
                 <p className="text-[11px] leading-relaxed text-amber-900/90 dark:text-amber-200/90">
-                  {interpello.date_anomaly_desc || "La scuola potrebbe aver indicato una data antecedente alla pubblicazione. L'interpello è comunque recente e da considerarsi valido."}
+                  {interpello.date_anomaly_desc || "La data di pubblicazione è più recente della data indicata nel testo dal bando. L'avviso è recente ed è da considerarsi ATTIVO, ma si consiglia di consultare il bando per chiarire le date effettive."}
                 </p>
               </div>
             </div>

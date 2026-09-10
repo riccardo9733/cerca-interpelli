@@ -8,6 +8,8 @@ interface CountdownBadgeProps {
   scadenzaRaw?: string | null;
   timeRemainingSeconds?: number | null;
   isExpired: boolean;
+  hasDateAnomaly?: boolean;
+  dateAnomalyDesc?: string | null;
 }
 
 export function CountdownBadge({
@@ -15,7 +17,26 @@ export function CountdownBadge({
   scadenzaRaw,
   timeRemainingSeconds,
   isExpired,
+  hasDateAnomaly,
+  dateAnomalyDesc,
 }: CountdownBadgeProps) {
+  // Se la scuola ha commesso un refuso sulle date (es. data pubblicazione più recente del termine indicato),
+  // il bando va mostrato come ATTIVO con un evidenziatore "?" come richiesto.
+  if (hasDateAnomaly) {
+    return (
+      <Badge 
+        variant="outline" 
+        className="font-medium text-amber-800 dark:text-amber-300 border-amber-300/90 dark:border-amber-800/80 bg-amber-50/90 dark:bg-amber-950/50 text-[11px] gap-1.5 py-0.5 cursor-help"
+        title={dateAnomalyDesc || "Bando recente con data incongruente o precedente alla pubblicazione. Considerato attivo con data da verificare."}
+      >
+        <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-amber-500 text-white font-bold text-[9px] leading-none shrink-0 shadow-2xs">
+          ?
+        </span>
+        <span>Attivo (refuso date)</span>
+      </Badge>
+    );
+  }
+
   if (!scadenza) {
     return (
       <Badge variant="outline" className="font-normal text-muted-foreground text-[11px] gap-1.5 py-0.5">

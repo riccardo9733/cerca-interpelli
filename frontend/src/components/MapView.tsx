@@ -162,10 +162,22 @@ export function MapView({
         const map = L.map(mapContainerRef.current).setView([45.4064, 11.8768], 10);
         mapInstanceRef.current = map;
 
-        // Tile layer CartoDB Positron / Voyager
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>',
-          maxZoom: 19,
+        // Se è presente una chiave CARTO usa Carto Voyager, altrimenti fallback trasparente su OpenStreetMap (nessuna chiave richiesta, zero watermark)
+        const cartoApiKey = process.env.NEXT_PUBLIC_CARTO_API_KEY?.trim();
+        const isCarto = Boolean(cartoApiKey && cartoApiKey !== 'YOUR_KEY');
+
+        const tileUrl = isCarto
+          ? `https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png?key=${encodeURIComponent(cartoApiKey!)}`
+          : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+
+        const attribution = isCarto
+          ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, &copy; <a href="https://carto.com/attributions">CARTO</a>'
+          : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+
+        L.tileLayer(tileUrl, {
+          attribution,
+          subdomains: isCarto ? 'abcd' : 'abc',
+          maxZoom: isCarto ? 20 : 19,
         }).addTo(map);
 
         const userLayer = L.layerGroup().addTo(map);
@@ -302,7 +314,11 @@ export function MapView({
                 <span style="font-family: monospace; font-weight: 700; font-size: 11px; color: #09090b; background: #f4f4f5; padding: 2px 5px; border-radius: 4px; border: 1px solid #e4e4e7;">
                   ${it.classi_concorso.join(', ') || 'Classe da bando'}
                 </span>
-                ${it.scadenza ? `<span style="font-size: 10px; color: #71717a; font-family: monospace;">Scade ${new Date(it.scadenza).toLocaleDateString('it-IT')}</span>` : ''}
+                ${it.has_date_anomaly ? `
+                  <span style="display: inline-flex; align-items: center; gap: 3px; font-size: 10px; font-weight: 600; color: #b45309; background: #fef3c7; border: 1px solid #fde68a; padding: 1px 5px; border-radius: 4px;" title="${it.date_anomaly_desc || 'Data anomala (bando attivo)'}">
+                    <span style="display:inline-flex; align-items:center; justify-content:center; width:12px; height:12px; border-radius:50%; background:#f59e0b; color:white; font-size:9px; font-weight:bold;">?</span> Data anomala
+                  </span>
+                ` : it.scadenza ? `<span style="font-size: 10px; color: #71717a; font-family: monospace;">Scade ${new Date(it.scadenza).toLocaleDateString('it-IT')}</span>` : ''}
               </div>
               <div style="font-size: 11px; font-weight: 600; color: #09090b; line-height: 1.3;">
                 ${it.title}

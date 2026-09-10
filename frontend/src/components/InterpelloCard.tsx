@@ -86,6 +86,8 @@ export function InterpelloCard({
             scadenzaRaw={interpello.scadenza_raw}
             timeRemainingSeconds={interpello.time_remaining_seconds}
             isExpired={interpello.is_expired}
+            hasDateAnomaly={interpello.has_date_anomaly}
+            dateAnomalyDesc={interpello.date_anomaly_desc}
           />
         </div>
 
@@ -177,12 +179,14 @@ export function InterpelloCard({
           {/* Alert Refuso Anomalia Scuola */}
           {interpello.has_date_anomaly && (
             <Badge 
-              variant="warning"
-              className="text-[11px] font-medium gap-1 cursor-help"
+              variant="outline"
+              className="text-[11px] font-semibold text-amber-800 dark:text-amber-300 border-amber-400/80 bg-amber-100/70 dark:bg-amber-950/40 gap-1.5 cursor-help shadow-2xs"
               title={interpello.date_anomaly_desc || 'Data indicata nel bando antecedente alla pubblicazione (probabile refuso della scuola)'}
             >
-              <AlertCircle className="w-3 h-3 text-amber-600 dark:text-amber-400" />
-              <span>Verifica date</span>
+              <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-amber-500 text-white font-bold text-[9px] leading-none shrink-0 shadow-2xs">
+                ?
+              </span>
+              <span>Data da verificare</span>
             </Badge>
           )}
 
