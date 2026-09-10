@@ -19,6 +19,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { useTheme } from '@/components/ThemeProvider';
 
 interface MapViewProps {
   interpelli: Interpello[];
@@ -43,8 +44,10 @@ export function MapView({
   filterByDistanceInList,
   onFilterByDistanceInListChange,
 }: MapViewProps) {
+  const { resolvedTheme } = useTheme();
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
+  const tileLayerRef = useRef<any>(null);
   const markersLayerRef = useRef<any>(null);
   const userLayerRef = useRef<any>(null);
 
@@ -158,33 +161,46 @@ export function MapView({
           iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
           shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
         });
-
         const map = L.map(mapContainerRef.current).setView([45.4064, 11.8768], 10);
         mapInstanceRef.current = map;
-
-        // Se è presente una chiave CARTO usa Carto Voyager, altrimenti fallback trasparente su OpenStreetMap (nessuna chiave richiesta, zero watermark)
-        const cartoApiKey = process.env.NEXT_PUBLIC_CARTO_API_KEY?.trim();
-        const isCarto = Boolean(cartoApiKey && cartoApiKey !== 'YOUR_KEY');
-
-        const tileUrl = isCarto
-          ? `https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png?key=${encodeURIComponent(cartoApiKey!)}`
-          : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-
-        const attribution = isCarto
-          ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, &copy; <a href="https://carto.com/attributions">CARTO</a>'
-          : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
-
-        L.tileLayer(tileUrl, {
-          attribution,
-          subdomains: isCarto ? 'abcd' : 'abc',
-          maxZoom: isCarto ? 20 : 19,
-        }).addTo(map);
 
         const userLayer = L.layerGroup().addTo(map);
         userLayerRef.current = userLayer;
 
         const markersLayer = L.layerGroup().addTo(map);
         markersLayerRef.current = markersLayer;
+      }
+
+      const map = mapInstanceRef.current;
+      if (map) {
+        // Aggiorna tile layer in base al tema corrente (Light Voyager / Dark Basemap)
+        const cartoApiKey = process.env.NEXT_PUBLIC_CARTO_API_KEY?.trim();
+        const isCarto = Boolean(cartoApiKey && cartoApiKey !== 'YOUR_KEY');
+        const isDark = resolvedTheme === 'dark';
+
+        const tileUrl = isCarto
+          ? isDark
+            ? `https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png?key=${encodeURIComponent(cartoApiKey!)}`
+            : `https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png?key=${encodeURIComponent(cartoApiKey!)}`
+          : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+
+        const attribution = isCarto
+          ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, &copy; <a href="https://carto.com/attributions">CARTO</a>'
+          : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+
+        if (tileLayerRef.current) {
+          map.removeLayer(tileLayerRef.current);
+        }
+
+        const newTileLayer = L.tileLayer(tileUrl, {
+          attribution,
+          subdomains: isCarto ? 'abcd' : 'abc',
+          maxZoom: isCarto ? 20 : 19,
+          className: !isCarto && isDark ? 'osm-dark-tiles' : undefined,
+        }).addTo(map);
+
+        tileLayerRef.current = newTileLayer;
+        newTileLayer.bringToBack();
       }
 
       const markersLayer = markersLayerRef.current;
@@ -221,9 +237,9 @@ export function MapView({
           const userMarker = L.marker([userLocation.latitude, userLocation.longitude], { icon: userIcon }).addTo(userLayer);
           userMarker.bindPopup(`
             <div style="font-family: system-ui, sans-serif; min-width: 170px; padding: 2px;">
-              <div style="font-weight: 700; font-size: 12px; color: #1e3a8a; margin-bottom: 2px;">📍 La tua posizione</div>
-              <div style="font-size: 11px; color: #475569; line-height: 1.3;">${userLocation.address}</div>
-              ${maxRadiusKm ? `<div style="margin-top: 6px; font-size: 10px; font-weight: 600; color: #2563eb; background: #eff6ff; padding: 2px 6px; border-radius: 4px; display: inline-block;">Raggio attivo: ${maxRadiusKm} km</div>` : ''}
+              <div style="font-weight: 700; font-size: 12px; color: var(--foreground); margin-bottom: 2px;">📍 La tua posizione</div>
+              <div style="font-size: 11px; color: var(--muted-foreground); line-height: 1.3;">${userLocation.address}</div>
+              ${maxRadiusKm ? `<div style="margin-top: 6px; font-size: 10px; font-weight: 600; color: #2563eb; background: rgba(37, 99, 235, 0.1); padding: 2px 6px; border-radius: 4px; display: inline-block;">Raggio attivo: ${maxRadiusKm} km</div>` : ''}
             </div>
           `);
 
@@ -258,13 +274,17 @@ export function MapView({
           const first = items[0];
           const lat = first.latitude!;
           const lon = first.longitude!;
-          bounds.extend([lat, lon]);
+          const count = items.length;
           hasSchoolPoints = true;
 
-          const count = items.length;
-          const hasExpiring = items.some((i) => !i.is_expired && i.time_remaining_seconds && i.time_remaining_seconds < 86400);
+          bounds.extend([lat, lon]);
 
-          const pinColor = hasExpiring ? '#b91c1c' : '#18181b';
+          const hasExpiring = items.some(
+            (it) => it.scadenza && !it.is_expired && (new Date(it.scadenza).getTime() - Date.now() < 24 * 60 * 60 * 1000)
+          );
+
+          const pinColor = count > 3 ? '#b91c1c' : count > 1 ? '#ea580c' : '#18181b';
+
           const customHtml = `
             <div style="
               position: relative;
@@ -303,29 +323,29 @@ export function MapView({
           popupContent.style.padding = '4px';
 
           const distanceHtml = first.distance !== null ? `
-            <div style="margin-bottom: 6px; display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 9999px; background: #eff6ff; border: 1px solid #bfdbfe; color: #1d4ed8; font-size: 10px; font-weight: 600; font-family: system-ui, sans-serif;">
+            <div style="margin-bottom: 6px; display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 9999px; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.25); color: #3b82f6; font-size: 10px; font-weight: 600; font-family: system-ui, sans-serif;">
               📏 ${formatDistance(first.distance)} da casa tua
             </div>
           ` : '';
 
           let listHtml = items.map((it) => `
-            <div style="margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid #e4e4e7;">
+            <div style="margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--border);">
               <div style="display:flex; justify-content:space-between; align-items:center; gap: 4px; margin-bottom: 2px;">
-                <span style="font-family: monospace; font-weight: 700; font-size: 11px; color: #09090b; background: #f4f4f5; padding: 2px 5px; border-radius: 4px; border: 1px solid #e4e4e7;">
+                <span style="font-family: monospace; font-weight: 700; font-size: 11px; color: var(--foreground); background: var(--muted); padding: 2px 5px; border-radius: 4px; border: 1px solid var(--border);">
                   ${it.classi_concorso.join(', ') || 'Classe da bando'}
                 </span>
                 ${it.has_date_anomaly ? `
-                  <span style="display: inline-flex; align-items: center; gap: 3px; font-size: 10px; font-weight: 600; color: #b45309; background: #fef3c7; border: 1px solid #fde68a; padding: 1px 5px; border-radius: 4px;" title="${it.date_anomaly_desc || 'Data anomala (bando attivo)'}">
+                  <span style="display: inline-flex; align-items: center; gap: 3px; font-size: 10px; font-weight: 600; color: #d97706; background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3); padding: 1px 5px; border-radius: 4px;" title="${it.date_anomaly_desc || 'Data anomala (bando attivo)'}">
                     <span style="display:inline-flex; align-items:center; justify-content:center; width:12px; height:12px; border-radius:50%; background:#f59e0b; color:white; font-size:9px; font-weight:bold;">?</span> Data anomala
                   </span>
-                ` : it.scadenza ? `<span style="font-size: 10px; color: #71717a; font-family: monospace;">Scade ${new Date(it.scadenza).toLocaleDateString('it-IT')}</span>` : ''}
+                ` : it.scadenza ? `<span style="font-size: 10px; color: var(--muted-foreground); font-family: monospace;">Scade ${new Date(it.scadenza).toLocaleDateString('it-IT')}</span>` : ''}
               </div>
-              <div style="font-size: 11px; font-weight: 600; color: #09090b; line-height: 1.3;">
+              <div style="font-size: 11px; font-weight: 600; color: var(--foreground); line-height: 1.3;">
                 ${it.title}
               </div>
               <button 
                 id="btn-open-${it.id}"
-                style="margin-top: 6px; width: 100%; text-align: center; padding: 4px 8px; font-size: 11px; font-weight: 500; color: #ffffff; background: #18181b; border-radius: 6px; border: none; cursor: pointer;"
+                style="margin-top: 6px; width: 100%; text-align: center; padding: 4px 8px; font-size: 11px; font-weight: 500; color: var(--primary-foreground); background: var(--primary); border-radius: 6px; border: none; cursor: pointer;"
               >
                 Dettagli & Candidatura
               </button>
@@ -334,10 +354,10 @@ export function MapView({
 
           popupContent.innerHTML = `
             <div style="font-family: system-ui, sans-serif;">
-              <div style="font-size: 12px; font-weight: 700; color: #09090b; margin-bottom: 2px;">
+              <div style="font-size: 12px; font-weight: 700; color: var(--foreground); margin-bottom: 2px;">
                 ${first.school_name || 'Scuola'}
               </div>
-              <div style="font-size: 11px; color: #71717a; margin-bottom: 6px;">
+              <div style="font-size: 11px; color: var(--muted-foreground); margin-bottom: 6px;">
                 📍 ${first.school_address || first.school_city || 'Provincia di Padova'}
               </div>
               ${distanceHtml}
@@ -370,7 +390,7 @@ export function MapView({
     return () => {
       isMounted = false;
     };
-  }, [filteredInterpelli, userLocation, maxRadiusKm, onSelectInterpello]);
+  }, [filteredInterpelli, userLocation, maxRadiusKm, onSelectInterpello, resolvedTheme]);
 
   return (
     <div className="space-y-3">

@@ -6,6 +6,7 @@ import { Stats } from '@/types/interpello';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 interface NavbarProps {
   stats: Stats | null;
@@ -129,6 +130,9 @@ export function Navbar({
                 <span className="hidden md:inline">Dati</span>
               </Button>
             )}
+
+            {/* Selettore Tema Chiaro / Scuro / Auto */}
+            <ThemeToggle />
 
             {/* Pulsante Sincronizza */}
             <Button
