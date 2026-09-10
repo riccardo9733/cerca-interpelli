@@ -138,7 +138,17 @@ function parseAttachmentsFromHtml(html: string): Attachment[] {
   return attachments;
 }
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+};
+
 Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_ANON_KEY") ?? "";
@@ -220,12 +230,12 @@ Deno.serve(async (req) => {
         items_updated: itemsUpdated,
         message: `Sincronizzazione completata su Supabase Edge Function!`
       }),
-      { headers: { "Content-Type": "application/json" } }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err: any) {
     return new Response(
       JSON.stringify({ success: false, error: err.message || String(err) }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });

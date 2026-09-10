@@ -24,6 +24,7 @@ export async function POST(req: NextRequest) {
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${supabaseKey}`,
+            'apikey': supabaseKey,
           },
           cache: 'no-store',
         });
