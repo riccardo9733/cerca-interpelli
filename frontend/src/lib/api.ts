@@ -78,6 +78,30 @@ export async function updateInterpelloStatus(
 }
 
 export async function triggerManualSync(): Promise<SyncResult> {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://oysatbtuiyfupeuezzai.supabase.co';
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95c2F0YnR1aXlmdXBldWV6emFpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwNjE5MTAsImV4cCI6MjEwNDYzNzkxMH0.tt0CGIDxWXQwmdcEtEnTi3lZurmCgBB03QN-bXCr0Xs';
+
+  // 1. Invocazione diretta dal browser alla Supabase Edge Function (veloce ~3-4s, evita Vercel serverless hop)
+  try {
+    const res = await fetch(`${supabaseUrl}/functions/v1/sync`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseAnonKey}`,
+      },
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.success !== false) {
+        return data;
+      }
+    }
+  } catch (err) {
+    console.warn('Invocazione diretta Supabase Edge Function fallita dal browser, provo via /api/sync:', err);
+  }
+
+  // 2. Fallback su API Route Next.js /api/sync
   const res = await fetch(`${API_BASE_URL}/api/sync`, {
     method: 'POST',
   });
