@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { formatInterpelloItem } from '@/lib/formatInterpello';
 
-export { formatInterpelloItem };
 
 export async function GET(req: NextRequest) {
   try {

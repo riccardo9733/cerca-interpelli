@@ -1,7 +1,19 @@
 import type { NextConfig } from "next";
+import withPWAInit from "@ducanh2912/next-pwa";
+
+const withPWA = withPWAInit({
+  dest: "public",
+  disable: process.env.NODE_ENV === "development",
+  register: true,
+  workboxOptions: {
+    skipWaiting: true,
+  },
+});
 
 const nextConfig: NextConfig = {
-  /* Configurazione Next.js nativa per Vercel */
+  /* Configurazione Next.js */
 };
 
-export default nextConfig;
+export default withPWA(nextConfig);
+
+
