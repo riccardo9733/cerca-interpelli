@@ -15,7 +15,8 @@ import {
   FilterParams 
 } from '@/lib/api';
 import { Interpello, Stats } from '@/types/interpello';
-import { School, AlertCircle, RefreshCw, Sparkles, Inbox } from 'lucide-react';
+import { AlertCircle, RefreshCw, Inbox } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export default function HomePage() {
   const [interpelli, setInterpelli] = useState<Interpello[]>([]);
@@ -52,7 +53,7 @@ export default function HomePage() {
       setAvailableClassi(classiData);
     } catch (err: any) {
       console.error('Errore durante caricamento:', err);
-      setError(err.message || 'Impossibile connettersi al backend');
+      setError(err.message || 'Impossibile connettersi al server locale');
     } finally {
       setIsLoading(false);
     }
@@ -80,7 +81,7 @@ export default function HomePage() {
     }
   };
 
-  // Aggiornamento stato candidatura
+  // Aggiornamento rapido stato candidatura (candidato / preferito)
   const handleToggleStatus = async (
     id: number,
     currentStatus: string,
@@ -100,7 +101,6 @@ export default function HomePage() {
       if (selectedInterpello?.id === id) {
         setSelectedInterpello(updated);
       }
-      // Ricarica statistiche
       const newStats = await fetchStats();
       setStats(newStats);
     } catch (err) {
@@ -128,9 +128,9 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors">
+    <div className="min-h-screen bg-background text-foreground flex flex-col font-sans selection:bg-muted selection:text-foreground">
       
-      {/* Navbar con statistiche e controlli */}
+      {/* Navbar Enterprise */}
       <Navbar
         stats={stats}
         activeView={activeView}
@@ -140,7 +140,7 @@ export default function HomePage() {
       />
 
       {/* Contenuto Principale */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
         
         {/* Filtri e Ricerca */}
         <FiltersBar
@@ -152,25 +152,27 @@ export default function HomePage() {
 
         {/* Gestione Errori */}
         {error && (
-          <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-rose-800 dark:text-rose-300 flex items-center justify-between gap-3 mb-6">
-            <div className="flex items-center gap-2 text-sm">
-              <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
+          <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive flex items-center justify-between gap-3 mb-6">
+            <div className="flex items-center gap-2 text-xs sm:text-sm">
+              <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{error}</span>
             </div>
-            <button
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => loadData(filters)}
-              className="px-3 py-1 text-xs font-semibold rounded-lg bg-rose-600 text-white hover:bg-rose-700"
+              className="text-xs h-7 border-destructive/30 hover:bg-destructive/10 text-destructive"
             >
               Riprova
-            </button>
+            </Button>
           </div>
         )}
 
         {/* Vista Principale: Elenco vs Mappa */}
         {isLoading ? (
-          <div className="py-24 flex flex-col items-center justify-center space-y-3 text-slate-400">
-            <RefreshCw className="w-8 h-8 animate-spin text-blue-600" />
-            <p className="text-sm font-medium">Caricamento interpelli...</p>
+          <div className="py-24 flex flex-col items-center justify-center space-y-3 text-muted-foreground">
+            <RefreshCw className="w-6 h-6 animate-spin text-foreground" />
+            <p className="text-xs font-medium">Aggiornamento elenco interpelli...</p>
           </div>
         ) : activeView === 'map' ? (
           <MapView
@@ -178,17 +180,19 @@ export default function HomePage() {
             onSelectInterpello={(item) => setSelectedInterpello(item)}
           />
         ) : interpelli.length === 0 ? (
-          <div className="py-20 flex flex-col items-center justify-center space-y-3 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-8 shadow-xs">
-            <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400">
-              <Inbox className="w-6 h-6" />
+          <div className="py-20 flex flex-col items-center justify-center space-y-3 text-center rounded-xl border border-border bg-card p-8 shadow-xs">
+            <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center text-muted-foreground">
+              <Inbox className="w-5 h-5" />
             </div>
-            <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">
-              Nessun interpello trovato
+            <h3 className="text-sm font-semibold text-foreground">
+              Nessun bando trovato
             </h3>
-            <p className="text-xs text-slate-500 max-w-sm">
-              Nessun bando corrisponde ai filtri selezionati. Prova a rimuovere alcuni filtri o a effettuare una ricerca più ampia.
+            <p className="text-xs text-muted-foreground max-w-sm">
+              Nessun interpello corrisponde ai parametri impostati. Prova a rimuovere alcuni filtri.
             </p>
-            <button
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() =>
                 setFilters({
                   search: '',
@@ -199,13 +203,13 @@ export default function HomePage() {
                   sort: 'date_desc',
                 })
               }
-              className="mt-2 px-4 py-2 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white shadow-xs transition"
+              className="mt-2 text-xs"
             >
-              Azzera tutti i filtri
-            </button>
+              Azzera filtri
+            </Button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
             {interpelli.map((item) => (
               <InterpelloCard
                 key={item.id}
@@ -219,7 +223,7 @@ export default function HomePage() {
 
       </main>
 
-      {/* Modale Dettagli */}
+      {/* Modale / Drawer Dettagli */}
       <InterpelloModal
         interpello={selectedInterpello}
         onClose={() => setSelectedInterpello(null)}

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   X, 
   MapPin, 
@@ -15,11 +15,14 @@ import {
   Bookmark, 
   CheckCircle2, 
   Send,
-  Navigation,
-  FileCheck
+  AlertCircle,
+  Briefcase
 } from 'lucide-react';
 import { Interpello } from '@/types/interpello';
 import { CountdownBadge } from './CountdownBadge';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 
 interface InterpelloModalProps {
   interpello: Interpello | null;
@@ -34,8 +37,14 @@ export function InterpelloModal({
 }: InterpelloModalProps) {
   const [copiedEmail, setCopiedEmail] = useState(false);
   const [copiedSubject, setCopiedSubject] = useState(false);
-  const [notes, setNotes] = useState(interpello?.notes || '');
+  const [notes, setNotes] = useState('');
   const [isSavingNotes, setIsSavingNotes] = useState(false);
+
+  useEffect(() => {
+    if (interpello) {
+      setNotes(interpello.notes || '');
+    }
+  }, [interpello]);
 
   if (!interpello) return null;
 
@@ -73,15 +82,21 @@ export function InterpelloModal({
     : null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto bg-slate-900/60 backdrop-blur-xs transition-opacity animate-in fade-in duration-200">
+    <div 
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xs transition-opacity animate-in fade-in-0"
+      onClick={onClose}
+    >
       <div 
-        className="relative w-full max-w-3xl bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-2xl overflow-hidden my-8 max-h-[90vh] flex flex-col"
+        className="relative w-full sm:max-w-2xl bg-card text-card-foreground sm:rounded-xl border border-border shadow-2xl overflow-hidden max-h-[92vh] sm:max-h-[85vh] flex flex-col animate-in slide-in-from-bottom sm:zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         
+        {/* Handle visuale per swipe-down su mobile */}
+        <div className="sm:hidden mx-auto mt-2 h-1 w-10 rounded-full bg-muted-foreground/30" />
+
         {/* Header Modale */}
-        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-start justify-between gap-4 bg-slate-50/50 dark:bg-slate-900/50">
-          <div className="space-y-2">
+        <div className="p-4 sm:p-6 pb-4 border-b border-border flex items-start justify-between gap-4">
+          <div className="space-y-1.5 pr-6">
             <div className="flex items-center gap-2 flex-wrap">
               <CountdownBadge
                 scadenza={interpello.scadenza}
@@ -89,93 +104,89 @@ export function InterpelloModal({
                 timeRemainingSeconds={interpello.time_remaining_seconds}
                 isExpired={interpello.is_expired}
               />
-              <span className="text-xs text-slate-400">
-                Pubblicato il {new Date(interpello.wp_date).toLocaleDateString('it-IT')}
+              <span className="text-[11px] font-mono text-muted-foreground">
+                Pubblicato {new Date(interpello.wp_date).toLocaleDateString('it-IT')}
               </span>
             </div>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white leading-snug">
+            <h2 className="text-base sm:text-lg font-semibold text-foreground leading-snug">
               {interpello.school_name || interpello.title}
             </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">
+            <p className="text-xs text-muted-foreground line-clamp-1">
               {interpello.title}
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition cursor-pointer"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Corpo Modale Scrollabile */}
-        <div className="p-6 overflow-y-auto space-y-6 text-sm text-slate-700 dark:text-slate-300">
+        {/* Contenuto Scrollabile */}
+        <div className="p-4 sm:p-6 overflow-y-auto space-y-5 text-xs text-muted-foreground">
           
-          {/* Banner Anomalia Refuso Date (?) */}
+          {/* Segnalazione Refuso Date (se presente) */}
           {interpello.has_date_anomaly && (
-            <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 flex items-start gap-3 shadow-xs">
-              <div className="w-6 h-6 rounded-full bg-amber-200 dark:bg-amber-800 text-amber-950 dark:text-amber-100 flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
-                ?
-              </div>
-              <div className="space-y-1">
-                <strong className="font-bold block text-xs uppercase tracking-wider text-amber-950 dark:text-amber-100">
-                  Segnalazione: Possibile Refuso Date nel Testo della Scuola
-                </strong>
-                <p className="text-xs leading-relaxed text-amber-900/90 dark:text-amber-200/90">
-                  {interpello.date_anomaly_desc || "La scuola ha inserito nel bando una data antecedente alla pubblicazione (es. 2026 invece di 2027, o anno precedente). L'avviso è recente e da considerarsi attivo per l'anno scolastico in corso."}
+            <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 flex items-start gap-2.5">
+              <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+              <div className="space-y-0.5">
+                <span className="font-semibold block text-xs">Verifica Date del Bando</span>
+                <p className="text-[11px] leading-relaxed text-amber-900/90 dark:text-amber-200/90">
+                  {interpello.date_anomaly_desc || "La scuola potrebbe aver indicato una data antecedente alla pubblicazione. L'interpello è comunque recente e da considerarsi valido."}
                 </p>
               </div>
             </div>
           )}
 
-          {/* Griglia Metadati Principali */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Griglia Informazioni Chiave */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             
-            {/* Scadenza e Periodo */}
-            <div className="p-4 rounded-2xl bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/40 space-y-2">
-              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-blue-800 dark:text-blue-300">
-                <Clock className="w-4 h-4 text-blue-600" />
+            {/* Scadenza Candidatura */}
+            <div className="p-3.5 rounded-lg border border-border bg-muted/30 space-y-1.5">
+              <div className="flex items-center gap-1.5 text-[11px] font-medium text-foreground">
+                <Clock className="w-3.5 h-3.5 text-muted-foreground" />
                 <span>Termine Candidatura</span>
               </div>
-              <p className="text-base font-bold text-blue-950 dark:text-blue-200">
+              <p className="text-sm font-semibold text-foreground font-mono">
                 {interpello.scadenza 
-                  ? new Date(interpello.scadenza).toLocaleString('it-IT', { dateStyle: 'full', timeStyle: 'short' })
-                  : interpello.scadenza_raw || 'Verificare nel bando allegato'}
+                  ? new Date(interpello.scadenza).toLocaleString('it-IT', { dateStyle: 'medium', timeStyle: 'short' })
+                  : interpello.scadenza_raw || 'Da verificare nel bando allegato'}
               </p>
               {interpello.periodo_desc && (
-                <div className="pt-2 border-t border-blue-100 dark:border-blue-900/40 text-xs text-blue-900 dark:text-blue-300">
-                  <strong>Periodo:</strong> {interpello.periodo_desc}
+                <div className="pt-1.5 border-t border-border/60 text-[11px]">
+                  <span className="text-muted-foreground">Periodo: </span>
+                  <span className="font-medium text-foreground">{interpello.periodo_desc}</span>
                 </div>
               )}
             </div>
 
-            {/* Sede e Posizione */}
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 space-y-2">
+            {/* Sede Scolastica */}
+            <div className="p-3.5 rounded-lg border border-border bg-muted/30 space-y-1.5">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                  <MapPin className="w-4 h-4 text-rose-500" />
-                  <span>Sede Scolastica</span>
+                <div className="flex items-center gap-1.5 text-[11px] font-medium text-foreground">
+                  <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
+                  <span>Sede Istituto</span>
                 </div>
                 {googleMapsUrl && (
                   <a
                     href={googleMapsUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 font-medium"
+                    className="text-[11px] text-foreground hover:underline flex items-center gap-1 font-medium"
                   >
                     <span>Mappe</span>
                     <ExternalLink className="w-3 h-3" />
                   </a>
                 )}
               </div>
-              <p className="font-semibold text-slate-900 dark:text-white">
+              <p className="text-xs font-semibold text-foreground">
                 {interpello.school_address || interpello.school_city || 'Provincia di Padova'}
               </p>
-              {interpello.latitude && interpello.longitude && (
-                <p className="text-xs text-slate-400">
-                  Coordinate: {interpello.latitude.toFixed(4)}, {interpello.longitude.toFixed(4)}
-                  {interpello.school_code ? ` · Codice: ${interpello.school_code}` : ''}
+              {interpello.school_code && (
+                <p className="text-[11px] font-mono text-muted-foreground">
+                  Codice scuola: {interpello.school_code}
                 </p>
               )}
             </div>
@@ -183,82 +194,92 @@ export function InterpelloModal({
           </div>
 
           {/* Dettagli Cattedra e Concorso */}
-          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 space-y-3">
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Dettagli Incarico
-            </h4>
-            <div className="flex flex-wrap gap-2 items-center">
+          <div className="p-3.5 rounded-lg border border-border bg-muted/20 space-y-2">
+            <span className="text-[11px] font-medium text-foreground uppercase tracking-wider">
+              Specifiche Incarico
+            </span>
+            <div className="flex flex-wrap gap-1.5 items-center">
               {interpello.classi_concorso.map((cls) => (
-                <span key={cls} className="px-3 py-1 rounded-lg text-xs font-bold bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                  Classe di concorso: {cls}
-                </span>
+                <Badge key={cls} variant="code">
+                  Classe {cls}
+                </Badge>
               ))}
-              <span className="px-3 py-1 rounded-lg text-xs font-medium bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-200">
-                Grado: {interpello.ordine_scuola || 'Non specificato'}
-              </span>
-              <span className="px-3 py-1 rounded-lg text-xs font-medium bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-200">
-                Tipologia: {interpello.tipo_posto || 'Posto comune'}
-              </span>
+              {interpello.ordine_scuola && (
+                <Badge variant="secondary">
+                  {interpello.ordine_scuola}
+                </Badge>
+              )}
+              {interpello.tipo_posto && (
+                <Badge variant="outline">
+                  {interpello.tipo_posto}
+                </Badge>
+              )}
               {interpello.ore_settimanali && (
-                <span className="px-3 py-1 rounded-lg text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
+                <Badge variant="secondary" className="font-mono">
                   {interpello.ore_settimanali}
-                </span>
+                </Badge>
               )}
               {interpello.posti_disponibili && (
-                <span className="px-3 py-1 rounded-lg text-xs font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">
+                <Badge variant="secondary" className="font-mono">
                   {interpello.posti_disponibili} posti
-                </span>
+                </Badge>
               )}
             </div>
           </div>
 
-          {/* Modalità di Candidatura (Email o Form) */}
-          <div className="p-5 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/40 space-y-3">
-            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-indigo-800 dark:text-indigo-300">
-              <Mail className="w-4 h-4 text-indigo-600" />
-              <span>Come Inviare la Candidatura</span>
+          {/* Modalità di Candidatura (Email/PEC o Form) */}
+          <div className="p-4 rounded-lg border border-border bg-muted/40 space-y-3">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+              <Mail className="w-3.5 h-3.5 text-muted-foreground" />
+              <span>Invio Candidatura</span>
             </div>
 
             {interpello.email_candidatura ? (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/50">
-                  <div className="truncate">
-                    <span className="text-xs text-slate-400 block">Indirizzo Email / PEC Scuola:</span>
-                    <strong className="text-sm text-slate-900 dark:text-white">{interpello.email_candidatura}</strong>
+              <div className="space-y-2.5">
+                {/* Casella Indirizzo PEC/Email */}
+                <div className="flex items-center justify-between gap-2 p-2.5 rounded-md bg-card border border-border">
+                  <div className="truncate pr-2">
+                    <span className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground block">Email / PEC</span>
+                    <strong className="text-xs font-mono text-foreground select-all">{interpello.email_candidatura}</strong>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <button
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => handleCopy(interpello.email_candidatura!, 'email')}
-                      className="p-2 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-slate-800 transition"
-                      title="Copia email"
+                      className="h-7 px-2 text-[11px] gap-1"
                     >
-                      {copiedEmail ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
-                    </button>
+                      {copiedEmail ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                      <span>{copiedEmail ? 'Copiata' : 'Copia'}</span>
+                    </Button>
                     {mailtoUrl && (
                       <a
                         href={mailtoUrl}
-                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-xs transition"
+                        className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md text-[11px] font-medium bg-foreground text-background hover:bg-foreground/90 transition"
                       >
-                        <Send className="w-3.5 h-3.5" />
-                        <span>Apri Client Mail</span>
+                        <Send className="w-3 h-3" />
+                        <span>Scrivi</span>
                       </a>
                     )}
                   </div>
                 </div>
 
+                {/* Casella Oggetto Email */}
                 {interpello.oggetto_email && (
-                  <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/50">
-                    <div className="truncate">
-                      <span className="text-xs text-slate-400 block">Oggetto Obbligatorio della Mail:</span>
-                      <code className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">{interpello.oggetto_email}</code>
+                  <div className="flex items-center justify-between gap-2 p-2.5 rounded-md bg-card border border-border">
+                    <div className="truncate pr-2">
+                      <span className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground block">Oggetto Richiesto</span>
+                      <code className="text-xs font-mono text-foreground select-all">{interpello.oggetto_email}</code>
                     </div>
-                    <button
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => handleCopy(interpello.oggetto_email!, 'subject')}
-                      className="p-2 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-slate-800 transition"
-                      title="Copia oggetto"
+                      className="h-7 px-2 text-[11px] gap-1 shrink-0"
                     >
-                      {copiedSubject ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
-                    </button>
+                      {copiedSubject ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                      <span>{copiedSubject ? 'Copiato' : 'Copia'}</span>
+                    </Button>
                   </div>
                 )}
               </div>
@@ -267,24 +288,24 @@ export function InterpelloModal({
                 href={interpello.link_candidatura}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-xs transition"
+                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-md text-xs font-medium bg-foreground text-background hover:bg-foreground/90 transition shadow-xs"
               >
-                <span>Compila Modulo Online (Google Form)</span>
+                <span>Compila Modulo Online Candidatura</span>
                 <ExternalLink className="w-3.5 h-3.5" />
               </a>
             ) : (
-              <p className="text-xs text-slate-500">
-                Consulta il bando allegato per conoscere l&apos;indirizzo o il portale dedicato a cui trasmettere la disponibilità.
+              <p className="text-xs text-muted-foreground">
+                Consultare il bando allegato per conoscere le modalità di invio della candidatura.
               </p>
             )}
           </div>
 
-          {/* Allegati Scaricabili */}
+          {/* Allegati */}
           {interpello.attachments.length > 0 && (
             <div className="space-y-2">
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                Documenti e Modulistica Ufficiale ({interpello.attachments.length})
-              </h4>
+              <span className="text-[11px] font-medium text-foreground uppercase tracking-wider">
+                Documenti Allegati ({interpello.attachments.length})
+              </span>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {interpello.attachments.map((att, idx) => (
                   <a
@@ -292,31 +313,31 @@ export function InterpelloModal({
                     href={att.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 hover:border-blue-500 transition group"
+                    className="flex items-center justify-between p-2.5 rounded-md bg-card border border-border hover:bg-muted/50 transition group"
                   >
-                    <div className="flex items-center gap-2.5 truncate">
-                      <FileText className="w-4 h-4 text-blue-500 shrink-0" />
-                      <span className="text-xs font-medium truncate text-slate-800 dark:text-slate-200">
+                    <div className="flex items-center gap-2 truncate">
+                      <FileText className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                      <span className="text-xs font-medium truncate text-foreground">
                         {att.name}
                       </span>
                     </div>
-                    <Download className="w-4 h-4 text-slate-400 group-hover:text-blue-500 shrink-0 ml-2" />
+                    <Download className="w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground shrink-0 ml-2" />
                   </a>
                 ))}
               </div>
             </div>
           )}
 
-          {/* Sezione Note Personali */}
-          <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+          {/* Note Personali */}
+          <div className="space-y-1.5 pt-2 border-t border-border">
             <div className="flex items-center justify-between">
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                Le tue Note Personali
-              </h4>
+              <span className="text-[11px] font-medium text-foreground uppercase tracking-wider">
+                Note Personali
+              </span>
               <button
                 onClick={handleSaveNotes}
                 disabled={isSavingNotes}
-                className="text-xs text-blue-600 dark:text-blue-400 hover:underline font-semibold"
+                className="text-[11px] text-foreground hover:underline font-medium cursor-pointer"
               >
                 {isSavingNotes ? 'Salvataggio...' : 'Salva note'}
               </button>
@@ -324,19 +345,19 @@ export function InterpelloModal({
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Aggiungi note (es: candidatura inviata il 10/09 alle 15:00 da PEC personale, chiamata scuola...)"
-              className="w-full p-3 rounded-xl text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-800 dark:text-slate-200"
+              placeholder="Aggiungi note (es. inviata PEC il 10/09, protocollata...)"
+              className="w-full p-2.5 rounded-md text-xs bg-muted/30 border border-input focus:outline-none focus:ring-1 focus:ring-ring text-foreground resize-none"
               rows={2}
             />
           </div>
 
-          {/* Testo estratto dal PDF (se presente) */}
+          {/* Testo Estratto dal PDF */}
           {interpello.content_raw && (
-            <details className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-400">
-              <summary className="font-semibold cursor-pointer select-none text-slate-700 dark:text-slate-300">
-                Visualizza testo estratto dal PDF
+            <details className="rounded-md border border-border/80 bg-muted/20 text-xs">
+              <summary className="p-2.5 font-medium cursor-pointer select-none text-foreground">
+                Mostra testo integrale estratto dal PDF
               </summary>
-              <pre className="mt-3 p-3 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 overflow-x-auto whitespace-pre-wrap text-[11px] leading-relaxed max-h-60 overflow-y-auto">
+              <pre className="p-3 pt-0 border-t border-border/60 overflow-x-auto whitespace-pre-wrap text-[11px] font-mono leading-relaxed max-h-48 text-muted-foreground">
                 {interpello.content_raw}
               </pre>
             </details>
@@ -344,45 +365,39 @@ export function InterpelloModal({
 
         </div>
 
-        {/* Footer Modale con Azioni Stato */}
-        <div className="p-5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-between gap-3 flex-wrap">
-          
+        {/* Footer Modale: Azioni Rapide & Link Fonte */}
+        <div className="p-3.5 sm:p-4 border-t border-border bg-card flex items-center justify-between gap-2 shrink-0">
           <div className="flex items-center gap-2">
-            <button
+            <Button
+              variant={isCandidato ? "default" : "outline"}
+              size="sm"
               onClick={() => onUpdateStatus(interpello.id, isCandidato ? 'nessuno' : 'candidato', notes)}
-              className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition shadow-xs ${
-                isCandidato
-                  ? 'bg-indigo-600 text-white hover:bg-indigo-500'
-                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100'
-              }`}
+              className="text-xs h-8 gap-1.5"
             >
-              <CheckCircle2 className="w-4 h-4" />
-              <span>{isCandidato ? 'Candidatura inviata ✓' : 'Segna come Candidato'}</span>
-            </button>
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>{isCandidato ? 'Candidatura inviata' : 'Segna inviata'}</span>
+            </Button>
 
-            <button
+            <Button
+              variant={isPreferito ? "secondary" : "outline"}
+              size="sm"
               onClick={() => onUpdateStatus(interpello.id, isPreferito ? 'nessuno' : 'preferito', notes)}
-              className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition shadow-xs ${
-                isPreferito
-                  ? 'bg-amber-500 text-white hover:bg-amber-400'
-                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100'
-              }`}
+              className={`text-xs h-8 gap-1.5 ${isPreferito ? 'text-amber-600 dark:text-amber-400 bg-amber-500/10' : ''}`}
             >
-              <Bookmark className="w-4 h-4" />
-              <span>{isPreferito ? 'Salvato nei Preferiti ★' : 'Salva nei Preferiti'}</span>
-            </button>
+              <Bookmark className={`w-3.5 h-3.5 ${isPreferito ? 'fill-current' : ''}`} />
+              <span>{isPreferito ? 'Salvato' : 'Salva'}</span>
+            </Button>
           </div>
 
           <a
             href={interpello.wp_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-900 dark:hover:text-white"
+            className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1 font-medium transition"
           >
-            <span>Articolo originale USP</span>
-            <ExternalLink className="w-3.5 h-3.5" />
+            <span>Fonte USP</span>
+            <ExternalLink className="w-3 h-3" />
           </a>
-
         </div>
 
       </div>

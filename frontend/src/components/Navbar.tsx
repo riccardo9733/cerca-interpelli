@@ -1,8 +1,11 @@
 'use client';
 
 import React from 'react';
-import { School, RefreshCw, Map, LayoutGrid, CheckCircle2, Clock, Flame, BookOpen } from 'lucide-react';
+import { RefreshCw, Map, LayoutGrid, CheckCircle2, Bookmark, Flame } from 'lucide-react';
 import { Stats } from '@/types/interpello';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Separator } from '@/components/ui/separator';
 
 interface NavbarProps {
   stats: Stats | null;
@@ -20,98 +23,99 @@ export function Navbar({
   isRefreshing,
 }: NavbarProps) {
   return (
-    <header className="sticky top-0 z-40 w-full backdrop-blur-md bg-white/85 dark:bg-slate-950/85 border-b border-slate-200/80 dark:border-slate-800 transition-colors shadow-xs">
+    <header className="sticky top-0 z-40 w-full border-b border-border bg-background/95 backdrop-blur-md transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16 gap-4">
+        <div className="flex items-center justify-between h-14 sm:h-16 gap-3">
           
-          {/* Logo & Titolo */}
+          {/* Brand & Titolo Enterprise */}
           <div className="flex items-center gap-3 min-w-max">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-sky-500 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
-              <School className="w-5 h-5" />
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-foreground text-background flex items-center justify-center font-bold text-sm tracking-tighter shadow-xs">
+              IP
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-lg font-bold tracking-tight bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
-                  Cerca Interpelli
+                <span className="text-sm sm:text-base font-semibold tracking-tight text-foreground">
+                  Interpelli Padova
                 </span>
-                <span className="px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider rounded-md bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/60">
-                  Padova
+                <span className="hidden sm:inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium tracking-wide rounded bg-muted text-muted-foreground border border-border">
+                  UAT Veneto
                 </span>
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">
-                Monitoraggio automatico bandi e supplenze UAT Padova
+              <p className="text-[11px] text-muted-foreground hidden md:block">
+                Osservatorio supplenze e bandi scolastici
               </p>
             </div>
           </div>
 
-          {/* Statistiche Live */}
+          {/* Statistiche Live (Ticker Desktop & Tablet) */}
           {stats && (
-            <div className="hidden lg:flex items-center gap-2">
-              <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-slate-100 dark:bg-slate-900 text-xs font-medium text-slate-700 dark:text-slate-300 border border-slate-200/70 dark:border-slate-800">
-                <BookOpen className="w-3.5 h-3.5 text-blue-600" />
-                <span>Totali: <strong>{stats.total_interpelli}</strong></span>
+            <div className="hidden lg:flex items-center h-8 gap-4 text-xs text-muted-foreground bg-muted/50 border border-border/80 px-3.5 rounded-lg">
+              <div className="flex items-center gap-2">
+                <span className="text-foreground font-semibold font-mono">{stats.total_interpelli}</span>
+                <span>totali</span>
               </div>
-              <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-xs font-medium text-emerald-800 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Attivi: <strong>{stats.active_interpelli}</strong></span>
+              <Separator orientation="vertical" className="h-3.5" />
+              <div className="flex items-center gap-2 text-foreground">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                <span className="font-semibold font-mono">{stats.active_interpelli}</span>
+                <span className="text-muted-foreground">attivi</span>
               </div>
               {stats.expiring_soon > 0 && (
-                <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/40 text-xs font-medium text-rose-800 dark:text-rose-300 border border-rose-200/60 dark:border-rose-800/60 animate-pulse">
-                  <Flame className="w-3.5 h-3.5 text-rose-600" />
-                  <span>Scadono oggi: <strong>{stats.expiring_soon}</strong></span>
-                </div>
+                <>
+                  <Separator orientation="vertical" className="h-3.5" />
+                  <div className="flex items-center gap-1.5 text-amber-700 dark:text-amber-400 font-medium">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0 animate-pulse" />
+                    <span className="font-mono font-semibold">{stats.expiring_soon}</span>
+                    <span>in scadenza</span>
+                  </div>
+                </>
               )}
               {stats.candidati > 0 && (
-                <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-xs font-medium text-indigo-800 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/60">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-indigo-600" />
-                  <span>Candidati: <strong>{stats.candidati}</strong></span>
-                </div>
+                <>
+                  <Separator orientation="vertical" className="h-3.5" />
+                  <div className="flex items-center gap-1.5 text-foreground">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-muted-foreground" />
+                    <span className="font-semibold font-mono">{stats.candidati}</span>
+                    <span className="text-muted-foreground">inviati</span>
+                  </div>
+                </>
               )}
             </div>
           )}
 
-          {/* Controlli Destra: Toggle Vista + Bottone Refresh */}
-          <div className="flex items-center gap-2 sm:gap-3">
+          {/* Controlli Destra: Toggle Vista + Sincronizzazione */}
+          <div className="flex items-center gap-2">
             
-            {/* Toggle Lista / Mappa */}
-            <div className="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-              <button
-                type="button"
-                onClick={() => onViewChange('list')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                  activeView === 'list'
-                    ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                <LayoutGrid className="w-3.5 h-3.5" />
-                <span>Elenco</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => onViewChange('map')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                  activeView === 'map'
-                    ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                <Map className="w-3.5 h-3.5" />
-                <span>Mappa</span>
-              </button>
-            </div>
+            {/* Toggle Lista / Mappa (Tabs Shadcn) */}
+            <Tabs
+              value={activeView}
+              onValueChange={(val) => onViewChange(val as 'list' | 'map')}
+              className="w-auto"
+            >
+              <TabsList className="h-8 sm:h-9 p-0.5 bg-muted border border-border/80">
+                <TabsTrigger value="list" className="h-7 sm:h-8 px-2.5 sm:px-3 text-xs gap-1.5">
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                  <span className="hidden xs:inline">Elenco</span>
+                </TabsTrigger>
+                <TabsTrigger value="map" className="h-7 sm:h-8 px-2.5 sm:px-3 text-xs gap-1.5">
+                  <Map className="w-3.5 h-3.5" />
+                  <span className="hidden xs:inline">Mappa</span>
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
 
-            {/* Pulsante Sincronizza ora */}
-            <button
-              type="button"
+            {/* Pulsante Sincronizza */}
+            <Button
+              variant="outline"
+              size="sm"
               onClick={onRefresh}
               disabled={isRefreshing}
-              title={stats?.last_sync ? `Ultimo sync: ${stats.last_sync}` : 'Sincronizza subito con USP'}
-              className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-900 shadow-xs transition active:scale-95 disabled:opacity-50"
+              className="h-8 sm:h-9 px-2.5 sm:px-3 gap-1.5 text-xs font-normal"
+              title={stats?.last_sync ? `Ultimo sync: ${stats.last_sync}` : 'Sincronizza ora'}
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-              <span className="hidden sm:inline">Aggiorna</span>
-            </button>
+              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-muted-foreground' : ''}`} />
+              <span className="hidden sm:inline">Sync</span>
+            </Button>
 
           </div>
 
