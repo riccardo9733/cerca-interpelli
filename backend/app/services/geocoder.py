@@ -41,10 +41,12 @@ class SchoolGeocoder:
         clean_city = (school_city or "").lower().strip()
 
         # 1. Ricerca nel catalogo per codice meccanografico esplicito (se fornito)
+        # Controlla sia il codice dell'istituto principale sia i codici dei singoli plessi
         if school_code:
             code_clean = school_code.strip().upper()
             for school in self.schools:
-                if school.get("code") and school["code"].upper() == code_clean:
+                if (school.get("code") and school["code"].upper() == code_clean) or \
+                   (code_clean in [p.upper() for p in school.get("plessi", [])]):
                     return {
                         "school_name": school["name"],
                         "school_code": school["code"],
@@ -56,7 +58,7 @@ class SchoolGeocoder:
 
         # 2. Ricerca nel catalogo locale per codice o alias con confini di parola esatti
         for school in self.schools:
-            # Controllo codice meccanografico nel nome
+            # Controllo codice meccanografico o codice plesso nel nome
             if school.get("code") and school["code"].lower() in clean_name:
                 return {
                     "school_name": school["name"],
@@ -66,18 +68,35 @@ class SchoolGeocoder:
                     "latitude": school["lat"],
                     "longitude": school["lon"],
                 }
-            # Controllo alias con confini di parola (\b) per evitare che "i ic" matchi dentro "ii ic"
-            for alias in school.get("aliases", []):
-                pattern = rf'\b{re.escape(alias)}\b'
-                if re.search(pattern, clean_name, re.IGNORECASE) or (clean_city and len(alias) > 3 and re.search(pattern, clean_city, re.IGNORECASE)):
+            for p in school.get("plessi", []):
+                if p.lower() in clean_name:
                     return {
                         "school_name": school["name"],
-                        "school_code": school.get("code"),
+                        "school_code": school["code"],
                         "school_address": school["address"],
                         "school_city": school["city"],
                         "latitude": school["lat"],
                         "longitude": school["lon"],
                     }
+
+        # Controllo alias: ordiniamo per lunghezza decrescente per matchare alias più specifici prima
+        all_candidates = []
+        for school in self.schools:
+            for alias in school.get("aliases", []):
+                all_candidates.append((len(alias), alias, school))
+        all_candidates.sort(key=lambda x: x[0], reverse=True)
+
+        for _, alias, school in all_candidates:
+            pattern = rf'\b{re.escape(alias)}\b'
+            if re.search(pattern, clean_name, re.IGNORECASE) or (clean_city and len(alias) > 3 and re.search(pattern, clean_city, re.IGNORECASE)):
+                return {
+                    "school_name": school["name"],
+                    "school_code": school.get("code"),
+                    "school_address": school["address"],
+                    "school_city": school["city"],
+                    "latitude": school["lat"],
+                    "longitude": school["lon"],
+                }
 
         # 2. Controllo query in geocache locale SQLite
         query = f"{address_hint or clean_name} {clean_city}".strip()
