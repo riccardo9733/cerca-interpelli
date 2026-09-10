@@ -114,45 +114,12 @@ def get_interpelli(
             if ore == "non_specificate":
                 conditions.append("(ore_settimanali IS NULL OR ore_settimanali = '' OR ore_settimanali LIKE '%da definire%')")
             elif ore == "intera":
-                conditions.append("""(
-                    CAST(ore_settimanali AS INTEGER) >= 18 
-                    OR ore_settimanali LIKE '%cattedra intera%'
-                    OR ore_settimanali LIKE '%posto intero%'
-                    OR title LIKE '%posto intero%'
-                    OR title LIKE '%cattedra intera%'
-                    OR ore_settimanali IS NULL 
-                    OR ore_settimanali = ''
-                )""")
+                conditions.append("(CAST(ore_settimanali AS INTEGER) >= 18 OR ore_settimanali LIKE '%cattedra intera%' OR ore_settimanali LIKE '%posto intero%')")
             elif ore == "spezzone":
-                conditions.append("""(
-                    (CAST(ore_settimanali AS INTEGER) > 0 AND CAST(ore_settimanali AS INTEGER) < 18) 
-                    OR ore_settimanali LIKE '%spezzone%'
-                    OR title LIKE '%spezzone%'
-                    OR ore_settimanali IS NULL 
-                    OR ore_settimanali = ''
-                )""")
+                conditions.append("((CAST(ore_settimanali AS INTEGER) > 0 AND CAST(ore_settimanali AS INTEGER) < 18) OR ore_settimanali LIKE '%spezzone%')")
             elif ore.isdigit():
-                ore_num = int(ore)
-                # Tollerante per non perdere nuovi interpelli con errori:
-                # include ore estratte, menzioni nel titolo o nel testo grezzo, E bandi con ore non riconosciute (NULL)
-                conditions.append("""(
-                    CAST(ore_settimanali AS INTEGER) = ?
-                    OR ore_settimanali LIKE ?
-                    OR title LIKE ?
-                    OR content_raw LIKE ?
-                    OR content_raw LIKE ?
-                    OR content_raw LIKE ?
-                    OR ore_settimanali IS NULL
-                    OR ore_settimanali = ''
-                )""")
-                params.extend([
-                    ore_num,
-                    f"%{ore_num} ore%",
-                    f"%{ore_num}%",
-                    f"%{ore_num} ore%",
-                    f"%{ore_num}h%",
-                    f"%{ore_num} h%"
-                ])
+                conditions.append("CAST(ore_settimanali AS INTEGER) = ?")
+                params.append(int(ore))
 
         if status and status != "tutti":
             conditions.append("status_candidatura = ?")

@@ -16,7 +16,8 @@ import {
   CheckCircle2, 
   Send,
   AlertCircle,
-  Briefcase
+  Briefcase,
+  Landmark
 } from 'lucide-react';
 import { Interpello, UserLocation } from '@/types/interpello';
 import { calculateDistanceKm, formatDistance } from '@/lib/distance';
@@ -79,6 +80,9 @@ export function InterpelloModal({
     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${interpello.school_name} ${interpello.school_address}`)}`
     : null;
 
+  // Portale del Governo URL (link diretto all'avviso o alla categoria interpelli)
+  const govPortalUrl = interpello.wp_url || 'https://padova.istruzioneveneto.gov.it/category/interpelli-personale-docente/';
+
   // Mailto link
   const mailtoSubject = encodeURIComponent(interpello.oggetto_email || `Candidatura interpello ${interpello.title}`);
   const mailtoUrl = interpello.email_candidatura
@@ -111,6 +115,17 @@ export function InterpelloModal({
               <span className="text-[11px] font-mono text-muted-foreground">
                 Pubblicato {new Date(interpello.wp_date).toLocaleDateString('it-IT')}
               </span>
+              <a
+                href={govPortalUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[11px] text-muted-foreground hover:text-foreground inline-flex items-center gap-1 font-medium transition hover:underline"
+                title="Apri sul portale del Governo (istruzioneveneto.gov.it)"
+              >
+                <Landmark className="w-3 h-3 text-muted-foreground" />
+                <span>Portale Governo</span>
+                <ExternalLink className="w-2.5 h-2.5 text-muted-foreground" />
+              </a>
             </div>
             <h2 className="text-base sm:text-lg font-semibold text-foreground leading-snug">
               {interpello.school_name || interpello.title}
@@ -313,13 +328,41 @@ export function InterpelloModal({
             )}
           </div>
 
-          {/* Allegati */}
-          {interpello.attachments.length > 0 && (
-            <div className="space-y-2">
-              <span className="text-[11px] font-medium text-foreground uppercase tracking-wider">
-                Documenti Allegati ({interpello.attachments.length})
-              </span>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {/* Documenti e Fonte Ufficiale */}
+          <div className="space-y-2">
+            <span className="text-[11px] font-medium text-foreground uppercase tracking-wider">
+              Documenti e Pubblicazione Ufficiale
+            </span>
+
+            {/* Box Link Portale del Governo */}
+            <a
+              href={govPortalUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-between p-3 rounded-lg border border-border bg-card hover:bg-muted/40 transition group"
+            >
+              <div className="flex items-center gap-2.5 truncate">
+                <div className="p-2 rounded-md bg-muted text-foreground shrink-0">
+                  <Landmark className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                </div>
+                <div className="truncate">
+                  <span className="text-xs font-semibold text-foreground block group-hover:underline">
+                    Avviso sul Portale del Governo (gov.it)
+                  </span>
+                  <span className="text-[11px] text-muted-foreground truncate block font-mono">
+                    padova.istruzioneveneto.gov.it
+                  </span>
+                </div>
+              </div>
+              <div className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground group-hover:text-foreground shrink-0 ml-2">
+                <span>Vedi avviso</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </div>
+            </a>
+
+            {/* Allegati */}
+            {interpello.attachments.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
                 {interpello.attachments.map((att, idx) => (
                   <a
                     key={idx}
@@ -338,8 +381,8 @@ export function InterpelloModal({
                   </a>
                 ))}
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Note Personali */}
           <div className="space-y-1.5 pt-2 border-t border-border">
@@ -403,13 +446,15 @@ export function InterpelloModal({
           </div>
 
           <a
-            href={interpello.wp_url}
+            href={govPortalUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1 font-medium transition"
+            className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 font-medium transition py-1 px-2 rounded-md hover:bg-muted"
+            title="Apri l'avviso originale sul portale del Governo (istruzioneveneto.gov.it)"
           >
-            <span>Fonte USP</span>
-            <ExternalLink className="w-3 h-3" />
+            <Landmark className="w-3.5 h-3.5" />
+            <span>Portale del Governo</span>
+            <ExternalLink className="w-3 h-3 text-muted-foreground" />
           </a>
         </div>
 
