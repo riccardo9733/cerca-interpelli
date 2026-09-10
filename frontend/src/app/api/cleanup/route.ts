@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminSupabase } from '@/lib/supabase';
-import { formatInterpelloItem } from '../interpelli/route';
+import { formatInterpelloItem } from '@/lib/formatInterpello';
 
 export const maxDuration = 60; // Fino a 60s per le Serverless Functions Vercel
 
@@ -33,15 +33,12 @@ export async function POST(req: NextRequest) {
             expiredForMs = now.getTime() - expDt.getTime();
           }
         } else if (item.wp_date) {
-          // Se non ha scadenza esplicita ed è scaduto (oltre 7 giorni da wp_date)
           const wpDt = new Date(item.wp_date);
           if (!isNaN(wpDt.getTime())) {
-            // È scaduto dopo 7 giorni, quindi calcoliamo il tempo trascorso oltre i 7 giorni
             expiredForMs = now.getTime() - (wpDt.getTime() + 7 * 86400 * 1000);
           }
         }
 
-        // Se è scaduto da almeno 48 ore (48 * 3600 * 1000 ms)
         if (expiredForMs >= FORTY_EIGHT_HOURS_MS) {
           idsToDelete.push(item.id);
         }
