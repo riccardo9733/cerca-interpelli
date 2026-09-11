@@ -60,18 +60,31 @@ export function formatInterpelloItem(row: any) {
     try {
       const exp = new Date(item.scadenza);
       if (!isNaN(exp.getTime())) {
-        const diffSec = Math.floor((exp.getTime() - now.getTime()) / 1000);
-        timeRemainingSeconds = diffSec;
+        let diffSec = Math.floor((exp.getTime() - now.getTime()) / 1000);
 
         if (wpDt && exp.getTime() < wpDt.getTime()) {
           hasDateAnomaly = true;
-          isExpired = false;
-          if (!dateAnomalyDesc) {
-            dateAnomalyDesc = "Data di scadenza indicata nel bando precedente alla pubblicazione (refuso della scuola): bando considerato attivo.";
+          const normalizedExp = new Date(exp);
+          normalizedExp.setFullYear(wpDt.getFullYear());
+          if (normalizedExp < wpDt) {
+            normalizedExp.setFullYear(wpDt.getFullYear() + 1);
+          }
+          diffSec = Math.floor((normalizedExp.getTime() - now.getTime()) / 1000);
+          timeRemainingSeconds = diffSec;
+
+          if (diffSec <= 0) {
+            isExpired = true;
+          } else {
+            isExpired = false;
+            if (!dateAnomalyDesc) {
+              dateAnomalyDesc = "Data di scadenza indicata nel bando precedente alla pubblicazione (refuso della scuola): anno normalizzato, bando attivo.";
+            }
           }
         } else if (pubIsMoreRecentThanFine || (hasDateAnomaly && isRecentPost && diffSec <= 0)) {
           isExpired = false;
+          timeRemainingSeconds = diffSec;
         } else {
+          timeRemainingSeconds = diffSec;
           isExpired = diffSec <= 0;
         }
       }

@@ -1,0 +1,387 @@
+[
+  {
+    "code": "ADAA",
+    "name": "Sostegno Scuola dell'Infanzia",
+    "ordine_scuola": "Infanzia",
+    "tipo_posto": "Sostegno",
+    "aliases": ["sostegno infanzia", "sostegno materna", "adaa"]
+  },
+  {
+    "code": "ADEE",
+    "name": "Sostegno Scuola Primaria",
+    "ordine_scuola": "Primaria",
+    "tipo_posto": "Sostegno",
+    "aliases": ["sostegno primaria", "sostegno elementare", "adee"]
+  },
+  {
+    "code": "ADMM",
+    "name": "Sostegno Scuola Secondaria I Grado",
+    "ordine_scuola": "Secondaria I grado",
+    "tipo_posto": "Sostegno",
+    "aliases": ["sostegno medie", "sostegno i grado", "admm"]
+  },
+  {
+    "code": "ADSS",
+    "name": "Sostegno Scuola Secondaria II Grado",
+    "ordine_scuola": "Secondaria II grado",
+    "tipo_posto": "Sostegno",
+    "aliases": ["sostegno superiori", "sostegno ii grado", "adss"]
+  },
+  {
+    "code": "ADEI",
+    "name": "Sostegno Minorati Psicofisici / Vista / Udito",
+    "ordine_scuola": "Altro",
+    "tipo_posto": "Sostegno",
+    "aliases": ["sostegno psicofisici", "adei"]
+  },
+  {
+    "code": "AAAA",
+    "name": "Posto Comune Scuola dell'Infanzia",
+    "ordine_scuola": "Infanzia",
+    "tipo_posto": "Posto Comune",
+    "aliases": ["infanzia", "materna", "aaaa"]
+  },
+  {
+    "code": "EEEE",
+    "name": "Posto Comune Scuola Primaria",
+    "ordine_scuola": "Primaria",
+    "tipo_posto": "Posto Comune",
+    "aliases": ["primaria", "elementare", "eeee"]
+  },
+  {
+    "code": "PPPP",
+    "name": "Personale Educativo",
+    "ordine_scuola": "Altro",
+    "tipo_posto": "Posto Comune",
+    "aliases": ["educatore", "convitto", "pppp"]
+  },
+  {
+    "code": "A022",
+    "name": "Italiano, Storia, Geografia (Scuola Secondaria I Grado)",
+    "ordine_scuola": "Secondaria I grado",
+    "tipo_posto": "Posto Comune",
+    "aliases": ["italiano medie", "lettere medie", "a022", "a-22"]
+  },
+  {
+    "code": "A028",
+    "name": "Matematica e Scienze (Scuola Secondaria I Grado)",
+    "ordine_scuola": "Secondaria I grado",
+    "tipo_posto": "Posto Comune",
+    "aliases": ["matematica medie", "scienze medie", "a028", "a-28"]
+  },
+  {
+    "code": "A030",
+    "name": "Musica (Scuola Secondaria I Grado)",
+    "ordine_scuola": "Secondaria I grado",
+    "tipo_posto": "Posto Comune",
+    "aliases": ["musica medie", "a030", "a-30"]
+  },
+  {
+    "code": "A049",
+    "name": "Scienze Motorie e Sportive (Scuola Secondaria I Grado)",
+    "ordine_scuola": "Secondaria I grado",
+    "tipo_posto": "Posto Comune",
+    "aliases": ["ed fisica medie", "motoria medie", "a049", "a-49"]
+  },
+  {
+    "code": "A060",
+    "name": "Tecnologia (Scuola Secondaria I Grado)",
+    "ordine_scuola": "Secondaria I grado",
+    "tipo_posto": "Posto Comune",
+    "aliases": ["tecnologia medie", "tecnica medie", "a060", "a-60"]
+  },
+  {
+    "code": "A001",
+    "name": "Arte e Immagine (Scuola Secondaria I Grado)",
+    "ordine_scuola": "Secondaria I grado",
+    "tipo_posto": "Posto Comune",
+    "aliases": ["arte medie", "disegno medie", "a001", "a-01"]
+  },
+  {
+    "code": "AA25",
+    "name": "Lingua Inglese (Scuola Secondaria I Grado)",
+    "ordine_scuola": "Secondaria I grado",
+    "tipo_posto": "Posto Comune",
+    "aliases": ["inglese medie", "lingua inglese i grado", "aa25", "a025"]
+  },
+  {
+    "code": "AB25",
+    "name": "Lingua Francese (Scuola Secondaria I Grado)",
+    "ordine_scuola": "Secondaria I grado",
+    "tipo_posto": "Posto Comune",
+    "aliases": ["francese medie", "lingua francese i grado", "ab25"]
+  },
+  {
+    "code": "AC25",
+    "name": "Lingua Spagnola (Scuola Secondaria I Grado)",
+    "ordine_scuola": "Secondaria I grado",
+    "tipo_posto": "Posto Comune",
+    "aliases": ["spagnolo medie", "lingua spagnola i grado", "ac25"]
+  },
+  {
+    "code": "AD25",
+    "name": "Lingua Tedesca (Scuola Secondaria I Grado)",
+    "ordine_scuola": "Secondaria I grado",
+    "tipo_posto": "Posto Comune",
+    "aliases": ["tedesco medie", "lingua tedesca i grado", "ad25", "tedesco"]
+  },
+  {
+    "code": "AJ56",
+    "name": "Pianoforte (Strumento Musicale I Grado)",
+    "ordine_scuola": "Secondaria I grado",
+    "tipo_posto": "Posto Comune",
+    "aliases": ["pianoforte", "strumento musicale pianoforte", "aj56"]
+  },
+  {
+    "code": "AG56",
+    "name": "Flauto Traverso (Strumento Musicale I Grado)",
+    "ordine_scuola": "Secondaria I grado",
+    "tipo_posto": "Posto Comune",
+    "aliases": ["flauto", "strumento musicale flauto", "ag56"]
+  },
+  {
+    "code": "AB56",
+    "name": "Chitarra (Strumento Musicale I Grado)",
+    "ordine_scuola": "Secondaria I grado",
+    "tipo_posto": "Posto Comune",
+    "aliases": ["chitarra", "strumento musicale chitarra", "ab56"]
+  },
+  {
+    "code": "A011",
+    "name": "Discipline Letterarie e Latino (Scuola Secondaria II Grado)",
+    "ordine_scuola": "Secondaria II grado",
+    "tipo_posto": "Posto Comune",
+    "aliases": ["lettere e latino", "latino liceo", "a011", "a-11"]
+  },
+  {
+    "code": "A012",
+    "name": "Discipline Letterarie (Scuola Secondaria II Grado)",
+    "ordine_scuola": "Secondaria II grado",
+    "tipo_posto": "Posto Comune",
+    "aliases": ["italiano e storia superiori", "lettere superiori", "a012", "a-12"]
+  },
+  {
+    "code": "A013",
+    "name": "Discipline Letterarie, Latino e Greco",
+    "ordine_scuola": "Secondaria II grado",
+    "tipo_posto": "Posto Comune",
+    "aliases": ["greco liceo classico", "latino e greco", "a013", "a-13"]
+  },
+  {
+    "code": "A018",
+    "name": "Filosofia e Scienze Umane",
+    "ordine_scuola": "Secondaria II grado",
+    "tipo_posto": "Posto Comune",
+    "aliases": ["psicologia superiori", "scienze umane", "a018", "a-18"]
+  },
+  {
+    "code": "A019",
+    "name": "Filosofia e Storia",
+    "ordine_scuola": "Secondaria II grado",
+    "tipo_posto": "Posto Comune",
+    "aliases": ["filosofia e storia liceo", "a019", "a-19"]
+  },
+  {
+    "code": "A020",
+    "name": "Fisica",
+    "ordine_scuola": "Secondaria II grado",
+    "tipo_posto": "Posto Comune",
+    "aliases": ["fisica superiori", "a020", "a-20"]
+  },
+  {
+    "code": "A021",
+    "name": "Geografia",
+    "ordine_scuola": "Secondaria II grado",
+    "tipo_posto": "Posto Comune",
+    "aliases": ["geografia superiori", "a021", "a-21"]
+  },
+  {
+    "code": "A026",
+    "name": "Matematica",
+    "ordine_scuola": "Secondaria II grado",
+    "tipo_posto": "Posto Comune",
+    "aliases": ["matematica superiori", "a026", "a-26"]
+  },
+  {
+    "code": "A027",
+    "name": "Matematica e Fisica",
+    "ordine_scuola": "Secondaria II grado",
+    "tipo_posto": "Posto Comune",
+    "aliases": ["matematica e fisica liceo", "a027", "a-27"]
+  },
+  {
+    "code": "A031",
+    "name": "Scienze degli Alimenti",
+    "ordine_scuola": "Secondaria II grado",
+    "tipo_posto": "Posto Comune",
+    "aliases": ["alimenti alberghiero", "a031", "a-31"]
+  },
+  {
+    "code": "A034",
+    "name": "Scienze e Tecnologie Chimiche",
+    "ordine_scuola": "Secondaria II grado",
+    "tipo_posto": "Posto Comune",
+    "aliases": ["chimica superiori", "a034", "a-34"]
+  },
+  {
+    "code": "A037",
+    "name": "Costruzioni, Tecnologie e Disegno Tecnico",
+    "ordine_scuola": "Secondaria II grado",
+    "tipo_posto": "Posto Comune",
+    "aliases": ["disegno tecnico cat geometri", "a037", "a-37"]
+  },
+  {
+    "code": "A040",
+    "name": "Scienze e Tecnologie Elettriche ed Elettroniche",
+    "ordine_scuola": "Secondaria II grado",
+    "tipo_posto": "Posto Comune",
+    "aliases": ["elettronica itis", "elettrotecnica", "a040", "a-40"]
+  },
+  {
+    "code": "A041",
+    "name": "Scienze e Tecnologie Informatiche",
+    "ordine_scuola": "Secondaria II grado",
+    "tipo_posto": "Posto Comune",
+    "aliases": ["informatica superiori", "informatica itis", "a041", "a-41"]
+  },
+  {
+    "code": "A042",
+    "name": "Scienze e Tecnologie Meccaniche",
+    "ordine_scuola": "Secondaria II grado",
+    "tipo_posto": "Posto Comune",
+    "aliases": ["meccanica itis", "a042", "a-42"]
+  },
+  {
+    "code": "A045",
+    "name": "Scienze Economico-Aziendali",
+    "ordine_scuola": "Secondaria II grado",
+    "tipo_posto": "Posto Comune",
+    "aliases": ["economia aziendale ragioneria", "a045", "a-45"]
+  },
+  {
+    "code": "A046",
+    "name": "Scienze Giuridico-Economiche",
+    "ordine_scuola": "Secondaria II grado",
+    "tipo_posto": "Posto Comune",
+    "aliases": ["diritto ed economia", "diritto superiori", "a046", "a-46"]
+  },
+  {
+    "code": "A047",
+    "name": "Scienze Matematiche Applicate",
+    "ordine_scuola": "Secondaria II grado",
+    "tipo_posto": "Posto Comune",
+    "aliases": ["matematica finanziaria", "a047", "a-47"]
+  },
+  {
+    "code": "A048",
+    "name": "Scienze Motorie e Sportive (Scuola Secondaria II Grado)",
+    "ordine_scuola": "Secondaria II grado",
+    "tipo_posto": "Posto Comune",
+    "aliases": ["ed fisica superiori", "motoria superiori", "a048", "a-48"]
+  },
+  {
+    "code": "A050",
+    "name": "Scienze Naturali, Chimiche e Biologiche",
+    "ordine_scuola": "Secondaria II grado",
+    "tipo_posto": "Posto Comune",
+    "aliases": ["biologia e scienze superiori", "a050", "a-50"]
+  },
+  {
+    "code": "A054",
+    "name": "Storia dell'Arte",
+    "ordine_scuola": "Secondaria II grado",
+    "tipo_posto": "Posto Comune",
+    "aliases": ["storia arte liceo", "a054", "a-54"]
+  },
+  {
+    "code": "AA24",
+    "name": "Lingua e Cultura Straniera (Inglese) - II Grado",
+    "ordine_scuola": "Secondaria II grado",
+    "tipo_posto": "Posto Comune",
+    "aliases": ["inglese superiori", "lingua inglese ii grado", "aa24", "a024"]
+  },
+  {
+    "code": "AB24",
+    "name": "Lingua e Cultura Straniera (Francese) - II Grado",
+    "ordine_scuola": "Secondaria II grado",
+    "tipo_posto": "Posto Comune",
+    "aliases": ["francese superiori", "lingua francese ii grado", "ab24"]
+  },
+  {
+    "code": "AC24",
+    "name": "Lingua e Cultura Straniera (Spagnolo) - II Grado",
+    "ordine_scuola": "Secondaria II grado",
+    "tipo_posto": "Posto Comune",
+    "aliases": ["spagnolo superiori", "lingua spagnola ii grado", "ac24"]
+  },
+  {
+    "code": "AD24",
+    "name": "Lingua e Cultura Straniera (Tedesco) - II Grado",
+    "ordine_scuola": "Secondaria II grado",
+    "tipo_posto": "Posto Comune",
+    "aliases": ["tedesco superiori", "lingua tedesca ii grado", "ad24"]
+  },
+  {
+    "code": "B015",
+    "name": "Laboratori di Elettrotecnica ed Elettronica",
+    "ordine_scuola": "Secondaria II grado",
+    "tipo_posto": "Laboratorio",
+    "aliases": ["lab elettronica", "itp elettronica", "b015", "b-15"]
+  },
+  {
+    "code": "B016",
+    "name": "Laboratori di Scienze e Tecnologie Informatiche",
+    "ordine_scuola": "Secondaria II grado",
+    "tipo_posto": "Laboratorio",
+    "aliases": ["lab informatica", "itp informatica", "b016", "b-16"]
+  },
+  {
+    "code": "B017",
+    "name": "Laboratori di Scienze e Tecnologie Meccaniche",
+    "ordine_scuola": "Secondaria II grado",
+    "tipo_posto": "Laboratorio",
+    "aliases": ["lab meccanica", "itp meccanica", "b017", "b-17"]
+  },
+  {
+    "code": "B020",
+    "name": "Laboratori di Enogastronomia (Cucina)",
+    "ordine_scuola": "Secondaria II grado",
+    "tipo_posto": "Laboratorio",
+    "aliases": ["itp cucina alberghiero", "b020", "b-20"]
+  },
+  {
+    "code": "B021",
+    "name": "Laboratori di Enogastronomia (Sala e Vendita)",
+    "ordine_scuola": "Secondaria II grado",
+    "tipo_posto": "Laboratorio",
+    "aliases": ["itp sala alberghiero", "b021", "b-21"]
+  },
+  {
+    "code": "AA",
+    "name": "Assistente Amministrativo (Personale ATA)",
+    "ordine_scuola": "ATA",
+    "tipo_posto": "ATA",
+    "aliases": ["ata assistente amministrativo", "segreteria scolastica", "aa"]
+  },
+  {
+    "code": "AT",
+    "name": "Assistente Tecnico (Personale ATA)",
+    "ordine_scuola": "ATA",
+    "tipo_posto": "ATA",
+    "aliases": ["ata assistente tecnico", "tecnico laboratorio", "at"]
+  },
+  {
+    "code": "CS",
+    "name": "Collaboratore Scolastico (Personale ATA)",
+    "ordine_scuola": "ATA",
+    "tipo_posto": "ATA",
+    "aliases": ["bidello", "collaboratore scolastico", "ata cs", "cs"]
+  },
+  {
+    "code": "DSGA",
+    "name": "Direttore dei Servizi Generali e Amministrativi",
+    "ordine_scuola": "ATA",
+    "tipo_posto": "ATA",
+    "aliases": ["dsga", "direttore dei servizi generali"]
+  }
+]

@@ -92,14 +92,47 @@ export function extractClassiConcorso(text: string, title?: string | null): stri
     }
   }
 
-  const matches = text.match(/\b([AB][\s\-]?[0-9]{2,3})\b/gi);
+  const matches = text.match(/\b([A-Z]{1,2}[\s\-]?[0-9]{2,3})\b/gi);
   if (matches) {
     for (const m of matches) {
       let cleanCode = m.replace(/[\s\-]/g, '').toUpperCase();
       if (cleanCode.length === 3 && /^[0-9]+$/.test(cleanCode.slice(1))) {
         cleanCode = `${cleanCode[0]}0${cleanCode.slice(1)}`;
       }
-      found.add(cleanCode);
+      if (/^(?:A[0-9]{3}|A[A-Z][0-9]{2}|B[0-9]{3}|ADAA|ADEE|ADMM|ADSS|ADEI|AAAA|EEEE|PPPP)$/.test(cleanCode)) {
+        found.add(cleanCode);
+      }
+    }
+  }
+
+  const ltCombined = `${title || ''} ${text}`.toLowerCase();
+
+  if (ltCombined.includes("tedesco") || ltCombined.includes("lingua tedesca")) {
+    if (ltCombined.includes("secondaria di secondo") || ltCombined.includes("superiori") || ltCombined.includes("ii grado")) {
+      found.add("AD24");
+    } else {
+      found.add("AD25");
+    }
+  }
+  if (ltCombined.includes("inglese") || ltCombined.includes("lingua inglese")) {
+    if (ltCombined.includes("secondaria di secondo") || ltCombined.includes("superiori") || ltCombined.includes("ii grado")) {
+      found.add("AA24");
+    } else {
+      found.add("AA25");
+    }
+  }
+  if (ltCombined.includes("francese") || ltCombined.includes("lingua francese")) {
+    if (ltCombined.includes("secondaria di secondo") || ltCombined.includes("superiori") || ltCombined.includes("ii grado")) {
+      found.add("AB24");
+    } else {
+      found.add("AB25");
+    }
+  }
+  if (ltCombined.includes("spagnolo") || ltCombined.includes("lingua spagnola")) {
+    if (ltCombined.includes("secondaria di secondo") || ltCombined.includes("superiori") || ltCombined.includes("ii grado")) {
+      found.add("AC24");
+    } else {
+      found.add("AC25");
     }
   }
 
@@ -115,7 +148,7 @@ export function extractClassiConcorso(text: string, title?: string | null): stri
     if (t.includes("sostegno")) {
       if (t.includes("infanzia") || t.includes("matern")) { found.add("ADAA"); break; }
       else if (t.includes("primaria") || t.includes("elementare")) { found.add("ADEE"); break; }
-      else if (t.includes("secondaria di primo grado") || t.includes("medie") || t.includes("i grado")) { found.add("ADMM"); break; }
+      else if (t.includes("secondaria di primo grado") || t.includes("medie") || t.includes("i grado") || t.includes("sc. secondaria")) { found.add("ADMM"); break; }
       else if (t.includes("secondaria di secondo grado") || t.includes("superiori") || t.includes("ii grado")) { found.add("ADSS"); break; }
     } else if (t.includes("posto comune") || t.includes("comune")) {
       if (t.includes("infanzia") || t.includes("matern")) { found.add("AAAA"); break; }
@@ -335,27 +368,57 @@ export function extractMetadata(title: string, htmlContent: string, pdfText?: st
   const ltTitle = title.toLowerCase();
   const lt = fullText.toLowerCase();
 
+  const isIC = ltTitle.includes(" ic ") || ltTitle.includes("ic ") || ltTitle.includes("i.c.") || ltTitle.includes("comprensivo") || lt.includes("istituto comprensivo");
+
   if (classi.some(c => ["ADAA", "AAAA"].includes(c)) || ltTitle.includes("infanzia") || ltTitle.includes("matern")) {
     ordine = "Infanzia";
   } else if (classi.some(c => ["ADEE", "EEEE"].includes(c)) || ltTitle.includes("primaria") || ltTitle.includes("elementar")) {
     ordine = "Primaria";
-  } else if (classi.includes("ADMM") || ltTitle.includes("secondaria di primo grado") || ltTitle.includes("medie")) {
+  } else if (
+    classi.includes("ADMM") ||
+    classi.some(c => ["AD25", "AA25", "AB25", "AC25", "A022", "A028", "A030", "A049", "A060"].includes(c)) ||
+    ltTitle.includes("secondaria di primo grado") ||
+    ltTitle.includes("medie") ||
+    ltTitle.includes("i grado") ||
+    ltTitle.includes("1° grado") ||
+    ltTitle.includes("sec. 1") ||
+    ltTitle.includes("sec 1") ||
+    (isIC && (ltTitle.includes("sc. secondaria") || ltTitle.includes("secondaria") || ltTitle.includes("sec. secondaria")))
+  ) {
     ordine = "Secondaria I grado";
-  } else if (classi.includes("ADSS") || ltTitle.includes("secondaria di secondo grado") || ltTitle.includes("superiori")) {
+  } else if (
+    classi.includes("ADSS") ||
+    classi.some(c => ["AD24", "AA24", "AB24", "AC24"].includes(c)) ||
+    ltTitle.includes("secondaria di secondo grado") ||
+    ltTitle.includes("superiori") ||
+    ltTitle.includes("ii grado") ||
+    ltTitle.includes("2° grado") ||
+    ltTitle.includes("sec. 2") ||
+    ltTitle.includes("sec 2")
+  ) {
+    ordine = "Secondaria II grado";
+  } else if (ltTitle.includes("sc. secondaria") || ltTitle.includes("secondaria")) {
+    ordine = isIC ? "Secondaria I grado" : "Secondaria II grado";
+  } else if (lt.includes("secondaria di primo grado") || lt.includes("medie") || (isIC && lt.includes("secondaria"))) {
+    ordine = "Secondaria I grado";
+  } else if (lt.includes("secondaria di secondo grado") || lt.includes("superiori")) {
     ordine = "Secondaria II grado";
   } else if (lt.includes("infanzia") || lt.includes("matern")) {
     ordine = "Infanzia";
   } else if (lt.includes("primaria") || lt.includes("elementar")) {
     ordine = "Primaria";
-  } else if (lt.includes("secondaria di primo grado") || lt.includes("medie")) {
-    ordine = "Secondaria I grado";
-  } else if (lt.includes("secondaria di secondo grado") || lt.includes("superiori")) {
-    ordine = "Secondaria II grado";
   }
 
   const [ore, posti] = extractOreEPosti(pdfText || fullText, ordine);
   const [email, oggettoEmail] = extractEmailAndSubject(pdfText || fullText);
-  const tipoPosto = (lt.includes("sostegno") || classi.some(c => c.startsWith("AD"))) ? "Sostegno" : "Posto Comune";
+
+  const sostegnoCodes = ["ADAA", "ADEE", "ADMM", "ADSS", "ADEI"];
+  const hasSubjectClass = classi.some(c => !sostegnoCodes.includes(c));
+  const isSostegno = classi.some(c => sostegnoCodes.includes(c)) ||
+    (ltTitle.includes("sostegno") && !hasSubjectClass) ||
+    (lt.includes("sostegno") && !hasSubjectClass && !ltTitle.includes("tedesco") && !ltTitle.includes("inglese") && !ltTitle.includes("francese") && !ltTitle.includes("spagnolo"));
+
+  const tipoPosto = isSostegno ? "Sostegno" : "Posto Comune";
 
   let linkCandidatura: string | null = null;
   const mForm = fullText.match(/https?:\/\/(?:forms\.gle|docs\.google\.com\/forms)[^\s"\'<>]+/);

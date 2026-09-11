@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { getClassLabel } from '@/lib/classiConcorso';
 import { Search, SlidersHorizontal, X, ArrowUpDown, Check, CheckCircle2, Bookmark } from 'lucide-react';
 import { FilterParams } from '@/lib/api';
 import { Input } from '@/components/ui/input';
@@ -96,11 +97,11 @@ export function FiltersBar({
             className="h-10 w-full rounded-lg border border-input bg-card px-3 text-xs font-medium text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer"
           >
             <option value="tutte">Tutte le Classi</option>
-            {availableClassi.map((cls) => (
-              <option key={cls} value={cls}>
-                Classe {cls}
-              </option>
-            ))}
+                {availableClassi.map((cls) => (
+                  <option key={cls} value={cls}>
+                    {getClassLabel(cls)}
+                  </option>
+                ))}
           </select>
         </div>
 
@@ -261,7 +262,7 @@ export function FiltersBar({
                 <option value="tutte">Tutte le Classi</option>
                 {availableClassi.map((cls) => (
                   <option key={cls} value={cls}>
-                    Classe {cls}
+                    {getClassLabel(cls)}
                   </option>
                 ))}
               </select>

@@ -12,6 +12,7 @@ import {
   Briefcase,
   AlertCircle
 } from 'lucide-react';
+import { getClassInfo } from '@/lib/classiConcorso';
 import { Interpello, UserLocation } from '@/types/interpello';
 import { calculateDistanceKm, formatDistance } from '@/lib/distance';
 import { CountdownBadge } from './CountdownBadge';
@@ -123,11 +124,18 @@ export function InterpelloCard({
           
           {/* Codice Concorso Monospace */}
           {interpello.classi_concorso.length > 0 ? (
-            interpello.classi_concorso.map((cls) => (
-              <Badge key={cls} variant="code">
-                {cls}
-              </Badge>
-            ))
+            interpello.classi_concorso.map((cls) => {
+              const info = getClassInfo(cls);
+              return (
+                <Badge 
+                  key={cls} 
+                  variant="code"
+                  title={info ? `${info.code} - ${info.name}` : `Classe ${cls}`}
+                >
+                  {cls}
+                </Badge>
+              );
+            })
           ) : (
             <Badge variant="outline" className="text-[11px] font-normal text-muted-foreground">
               Da bando

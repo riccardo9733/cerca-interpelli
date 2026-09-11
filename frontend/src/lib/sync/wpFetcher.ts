@@ -2,6 +2,7 @@ import { getAdminSupabase } from '../supabase';
 import { extractMetadata, decodeHtmlEntities } from './extractor';
 import { resolveLocation } from './geocoder';
 import { downloadAndExtractPdfText } from './pdfParser';
+import { formatInterpelloItem } from '../formatInterpello';
 
 const WP_API_URL = process.env.WP_API_URL || 'https://padova.istruzioneveneto.gov.it/wp-json/wp/v2/posts?categories=212&per_page=50';
 
@@ -160,6 +161,45 @@ export async function syncInterpelli() {
       items_new: itemsNew,
       items_updated: itemsUpdated
     });
+
+    // 6. Pulizia automatica interpelli scaduti (>48h)
+    try {
+      const { data: allRows } = await supabase.from('interpelli').select('*');
+      if (allRows && allRows.length > 0) {
+        const now = new Date();
+        const FORTY_EIGHT_HOURS_MS = 48 * 3600 * 1000;
+        const idsToDelete: number[] = [];
+
+        allRows.forEach(row => {
+          const item = formatInterpelloItem(row);
+          if (item.is_expired) {
+            let expiredForMs = 0;
+            if (item.scadenza) {
+              const expDt = new Date(item.scadenza);
+              if (!isNaN(expDt.getTime())) {
+                expiredForMs = now.getTime() - expDt.getTime();
+              }
+            } else if (item.wp_date) {
+              const wpDt = new Date(item.wp_date);
+              if (!isNaN(wpDt.getTime())) {
+                expiredForMs = now.getTime() - (wpDt.getTime() + 7 * 86400 * 1000);
+              }
+            }
+
+            if (expiredForMs >= FORTY_EIGHT_HOURS_MS) {
+              idsToDelete.push(item.id);
+            }
+          }
+        });
+
+        if (idsToDelete.length > 0) {
+          console.log(`Eliminazione di ${idsToDelete.length} interpelli scaduti da più di 48 ore...`);
+          await supabase.from('interpelli').delete().in('id', idsToDelete);
+        }
+      }
+    } catch (cleanupErr) {
+      console.warn('Errore durante la pulizia post-sync:', cleanupErr);
+    }
 
   } catch (err: any) {
     console.error('Errore durante la sincronizzazione:', err);

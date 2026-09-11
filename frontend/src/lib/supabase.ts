@@ -1,12 +1,8 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 if (typeof globalThis.WebSocket === 'undefined') {
-  try {
-    (globalThis as any).WebSocket = require('ws');
-  } catch (_) {
-    class DummyWebSocket {}
-    (globalThis as any).WebSocket = DummyWebSocket;
-  }
+  class DummyWebSocket {}
+  (globalThis as any).WebSocket = DummyWebSocket;
 }
 
 const DEFAULT_SUPABASE_URL = 'https://oysatbtuiyfupeuezzai.supabase.co';

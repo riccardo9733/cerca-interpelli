@@ -19,6 +19,7 @@ import {
   Briefcase,
   Landmark
 } from 'lucide-react';
+import { getClassInfo } from '@/lib/classiConcorso';
 import { Interpello, UserLocation } from '@/types/interpello';
 import { calculateDistanceKm, formatDistance } from '@/lib/distance';
 import { CountdownBadge } from './CountdownBadge';
@@ -237,11 +238,14 @@ export function InterpelloModal({
               Specifiche Incarico
             </span>
             <div className="flex flex-wrap gap-1.5 items-center">
-              {interpello.classi_concorso.map((cls) => (
-                <Badge key={cls} variant="code">
-                  Classe {cls}
-                </Badge>
-              ))}
+              {interpello.classi_concorso.map((cls) => {
+                const info = getClassInfo(cls);
+                return (
+                  <Badge key={cls} variant="code" title={info ? info.name : `Classe ${cls}`}>
+                    {info ? `${info.code} · ${info.name}` : `Classe ${cls}`}
+                  </Badge>
+                );
+              })}
               {interpello.ordine_scuola && (
                 <Badge variant="secondary">
                   {interpello.ordine_scuola}
