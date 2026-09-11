@@ -240,7 +240,7 @@ Deno.serve(async (req) => {
       const classi = extractClassiConcorso(title + ' ' + contentHtml, title);
       const [scadenzaIso, scadenzaRaw] = extractScadenza(title, contentHtml);
 
-      const record = {
+      const record: Record<string, any> = {
         wp_id: wpId,
         title,
         slug,
@@ -249,11 +249,17 @@ Deno.serve(async (req) => {
         wp_url: wpUrl,
         school_name: schoolName,
         classi_concorso: classi,
-        scadenza: scadenzaIso,
-        scadenza_raw: scadenzaRaw,
         attachments: attachments,
         updated_at: new Date().toISOString()
       };
+
+      if (scadenzaIso) {
+        record.scadenza = scadenzaIso;
+        record.scadenza_raw = scadenzaRaw;
+      } else if (!existing) {
+        record.scadenza = null;
+        record.scadenza_raw = null;
+      }
 
       const { error: upsertErr } = await supabase
         .from('interpelli')
