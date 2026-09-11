@@ -43,6 +43,13 @@ function normalizeText(str: string | null | undefined): string {
     .trim();
 }
 
+function isSameDate(d1: string | null | undefined, d2: string | null | undefined): boolean {
+  if (!d1 || !d2) return false;
+  const norm1 = d1.trim().replace(/\.\d+/, '').replace(/(\+[0-9:]+|Z)$/, '');
+  const norm2 = d2.trim().replace(/\.\d+/, '').replace(/(\+[0-9:]+|Z)$/, '');
+  return norm1 === norm2;
+}
+
 function resolveSchoolFromCatalog(title: string): any | null {
   const normTitle = normalizeText(title);
 
@@ -667,6 +674,20 @@ Deno.serve(async (req) => {
     let itemsUpdated = 0;
     let upsertErrors: any[] = [];
 
+    // Pre-carica in un'unica query tutti gli interpelli già presenti nel DB per verificare wp_modified
+    const wpIds = posts.map(p => p.id);
+    const { data: existingRows } = await supabase
+      .from('interpelli')
+      .select('wp_id, wp_modified, school_name, school_code, school_address, school_city, scadenza, scadenza_raw, status_candidatura, notes')
+      .in('wp_id', wpIds);
+
+    const existingMap = new Map<number, any>();
+    for (const r of existingRows || []) {
+      if (!existingMap.has(r.wp_id)) {
+        existingMap.set(r.wp_id, r);
+      }
+    }
+
     for (const p of posts) {
       const wpId = p.id;
       const rawTitle = p.title?.rendered || '';
@@ -677,17 +698,11 @@ Deno.serve(async (req) => {
       const wpUrl = p.link || '';
       const contentHtml = p.content?.rendered || '';
 
-      const { data: existing } = await supabase
-        .from('interpelli')
-        .select('wp_id, wp_modified, school_name, title')
-        .eq('wp_id', wpId)
-        .limit(1)
-        .maybeSingle();
-
+      const existing = existingMap.get(wpId);
       const matchedSchool = resolveSchoolFromCatalog(title);
       const schoolName = matchedSchool ? matchedSchool.name : extractCleanSchoolName(title);
 
-      if (!force && existing && existing.wp_modified === wpModified) {
+      if (!force && existing && isSameDate(existing.wp_modified, wpModified)) {
         continue;
       }
 
@@ -782,9 +797,9 @@ Deno.serve(async (req) => {
           wp_modified: wpModified,
           wp_url: wpUrl,
           school_name: schoolName,
-          school_code: matchedSchool ? matchedSchool.code : null,
-          school_address: matchedSchool ? matchedSchool.address : null,
-          school_city: matchedSchool ? matchedSchool.city : 'Padova',
+          school_code: matchedSchool ? matchedSchool.code : (existing?.school_code || null),
+          school_address: matchedSchool ? matchedSchool.address : (existing?.school_address || null),
+          school_city: matchedSchool ? matchedSchool.city : (existing?.school_city || 'Padova'),
           latitude: matchedSchool ? matchedSchool.lat : 45.4064,
           longitude: matchedSchool ? matchedSchool.lon : 11.8768,
           classi_concorso: posClassi,
@@ -799,7 +814,8 @@ Deno.serve(async (req) => {
           oggetto_email: oggettoEmail,
           link_candidatura: linkCandidatura,
           posti_dettaglio: positionsToInsert,
-          notes: pos.note || null,
+          status_candidatura: existing?.status_candidatura || 'nessuno',
+          notes: pos.note || existing?.notes || null,
           attachments: attachments,
           content_raw: pdfText ? pdfText.slice(0, 3000) : null,
           updated_at: new Date().toISOString()
@@ -808,7 +824,10 @@ Deno.serve(async (req) => {
         if (scadenzaIso) {
           record.scadenza = scadenzaIso;
           record.scadenza_raw = scadenzaRaw;
-        } else if (!existing) {
+        } else if (existing?.scadenza) {
+          record.scadenza = existing.scadenza;
+          record.scadenza_raw = existing.scadenza_raw;
+        } else {
           record.scadenza = null;
           record.scadenza_raw = null;
         }

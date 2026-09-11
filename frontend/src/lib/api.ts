@@ -1,4 +1,5 @@
 import { Interpello, Stats, SyncResult } from '@/types/interpello';
+import { formatInterpelloItem } from '@/lib/formatInterpello';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
@@ -139,6 +140,43 @@ export interface ScanAIResult {
 }
 
 export async function scanInterpelloWithAI(wpId: number): Promise<ScanAIResult> {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://oysatbtuiyfupeuezzai.supabase.co';
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95c2F0YnR1aXlmdXBldWV6emFpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwNjE5MTAsImV4cCI6MjEwNDYzNzkxMH0.tt0CGIDxWXQwmdcEtEnTi3lZurmCgBB03QN-bXCr0Xs';
+
+  // 1. Tenta prima la chiamata diretta dal browser alla Supabase Edge Function 'sync-ai'
+  // Questo evita il limite di timeout di Vercel (10-15s sui piani Free) e problemi di variabili d'ambiente nel deploy
+  try {
+    const edgeRes = await fetch(`${supabaseUrl}/functions/v1/sync-ai`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseAnonKey}`,
+        'apikey': supabaseAnonKey,
+      },
+      body: JSON.stringify({ wp_id: wpId }),
+    });
+
+    if (edgeRes.ok) {
+      const data = await edgeRes.json();
+      if (data && data.success !== false) {
+        const formattedItems = (data.updated_items || []).map(formatInterpelloItem);
+        return {
+          success: true,
+          wp_id: wpId,
+          ai_extracted: data.ai_extracted,
+          items_count: formattedItems.length,
+          updated_items: formattedItems,
+          message: data.message || 'Scansione IA completata con successo',
+        };
+      }
+    } else {
+      console.warn(`[scanInterpelloWithAI] Chiamata diretta Edge Function fallita con status ${edgeRes.status}, provo via /api/scan-ai...`);
+    }
+  } catch (err) {
+    console.warn('[scanInterpelloWithAI] Eccezione chiamata diretta Edge Function, provo via /api/scan-ai:', err);
+  }
+
+  // 2. Fallback su API Route Next.js /api/scan-ai
   const res = await fetch(`${API_BASE_URL}/api/scan-ai`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

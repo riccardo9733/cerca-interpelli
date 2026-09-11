@@ -41,6 +41,13 @@ export function parseAttachmentsFromHtml(html: string): Attachment[] {
   return attachments;
 }
 
+function isSameDate(d1: string | null | undefined, d2: string | null | undefined): boolean {
+  if (!d1 || !d2) return false;
+  const norm1 = d1.trim().replace(/\.\d+/, '').replace(/(\+[0-9:]+|Z)$/, '');
+  const norm2 = d2.trim().replace(/\.\d+/, '').replace(/(\+[0-9:]+|Z)$/, '');
+  return norm1 === norm2;
+}
+
 export async function syncInterpelli() {
   console.log('Avvio sincronizzazione interpelli con Supabase...');
   let itemsFound = 0;
@@ -62,6 +69,20 @@ export async function syncInterpelli() {
     const posts = await res.json();
     itemsFound = posts.length;
 
+    // Pre-carica in un'unica query tutti gli interpelli già presenti nel DB
+    const wpIds = posts.map((p: any) => p.id);
+    const { data: existingRows } = await supabase
+      .from('interpelli')
+      .select('wp_id, wp_modified, school_code, school_address, school_city, scadenza, scadenza_raw, status_candidatura, notes')
+      .in('wp_id', wpIds);
+
+    const existingMap = new Map<number, any>();
+    for (const r of existingRows || []) {
+      if (!existingMap.has(r.wp_id)) {
+        existingMap.set(r.wp_id, r);
+      }
+    }
+
     for (const p of posts) {
       const wpId = p.id;
       const title = decodeHtmlEntities(p.title?.rendered || '');
@@ -71,14 +92,9 @@ export async function syncInterpelli() {
       const wpUrl = p.link || '';
       const contentHtml = p.content?.rendered || '';
 
-      // Verifica se già presente e non modificato
-      const { data: existing } = await supabase
-        .from('interpelli')
-        .select('wp_id, wp_modified')
-        .eq('wp_id', wpId)
-        .maybeSingle();
+      const existing = existingMap.get(wpId);
 
-      if (existing && existing.wp_modified === wpModified) {
+      if (existing && isSameDate(existing.wp_modified, wpModified)) {
         continue;
       }
 
@@ -97,7 +113,7 @@ export async function syncInterpelli() {
 
       // 4. Geolocalizzazione
       const schoolTarget = meta.school_name || title;
-      let schoolCode = meta.school_code;
+      let schoolCode = meta.school_code || existing?.school_code;
       if (meta.email_candidatura && !meta.email_candidatura.toLowerCase().startsWith('usp.pd')) {
         const mEmailCode = meta.email_candidatura.match(/\b(PD[A-Z0-9]{8})\b/i);
         if (mEmailCode) schoolCode = mEmailCode[1].toUpperCase();
@@ -105,13 +121,13 @@ export async function syncInterpelli() {
 
       const geoInfo = await resolveLocation(
         schoolTarget,
-        meta.school_city,
-        meta.school_address,
+        meta.school_city || existing?.school_city,
+        meta.school_address || existing?.school_address,
         schoolCode
       );
 
       // 5. Upsert su Supabase
-      const record = {
+      const record: Record<string, any> = {
         wp_id: wpId,
         title,
         slug,
@@ -119,9 +135,9 @@ export async function syncInterpelli() {
         wp_modified: wpModified,
         wp_url: wpUrl,
         school_name: geoInfo.school_name,
-        school_code: geoInfo.school_code || meta.school_code,
-        school_address: geoInfo.school_address,
-        school_city: geoInfo.school_city,
+        school_code: geoInfo.school_code || meta.school_code || existing?.school_code || null,
+        school_address: geoInfo.school_address || existing?.school_address || null,
+        school_city: geoInfo.school_city || existing?.school_city || 'Padova',
         latitude: geoInfo.latitude,
         longitude: geoInfo.longitude,
         classi_concorso: meta.classi_concorso,
@@ -132,11 +148,13 @@ export async function syncInterpelli() {
         periodo_desc: meta.periodo_desc,
         periodo_inizio: meta.periodo_inizio,
         periodo_fine: meta.periodo_fine,
-        scadenza: meta.scadenza,
-        scadenza_raw: meta.scadenza_raw,
+        scadenza: meta.scadenza || existing?.scadenza || null,
+        scadenza_raw: meta.scadenza_raw || existing?.scadenza_raw || null,
         email_candidatura: meta.email_candidatura,
         oggetto_email: meta.oggetto_email,
         link_candidatura: meta.link_candidatura,
+        status_candidatura: existing?.status_candidatura || 'nessuno',
+        notes: existing?.notes || null,
         attachments: attachments,
         content_raw: pdfText ? pdfText.slice(0, 3000) : null,
         updated_at: new Date().toISOString()
