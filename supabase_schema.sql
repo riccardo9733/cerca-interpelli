@@ -82,3 +82,19 @@ ALTER TABLE sync_logs ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Accesso completo pubblico interpelli" ON interpelli FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Accesso completo pubblico geocache" ON geocache FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Accesso completo pubblico sync_logs" ON sync_logs FOR ALL USING (true) WITH CHECK (true);
+
+-- 4. Pianificazione Sincronizzazione Automatica su Supabase (pg_cron + pg_net)
+-- Esegue la chiamata POST all'Edge Function ogni 10 min tra le 07:00 e le 21:00 italiane (05:00-19:00 UTC)
+CREATE EXTENSION IF NOT EXISTS pg_cron WITH SCHEMA extensions;
+CREATE EXTENSION IF NOT EXISTS pg_net WITH SCHEMA extensions;
+
+SELECT cron.schedule(
+    'sync-interpelli-10m',
+    '*/10 5-19 * * *',
+    $$
+    SELECT net.http_post(
+        url := 'https://oysatbtuiyfupeuezzai.supabase.co/functions/v1/sync',
+        headers := '{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95c2F0YnR1aXlmdXBldWV6emFpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwNjE5MTAsImV4cCI6MjEwNDYzNzkxMH0.tt0CGIDxWXQwmdcEtEnTi3lZurmCgBB03QN-bXCr0Xs", "apikey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95c2F0YnR1aXlmdXBldWV6emFpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwNjE5MTAsImV4cCI6MjEwNDYzNzkxMH0.tt0CGIDxWXQwmdcEtEnTi3lZurmCgBB03QN-bXCr0Xs"}'::jsonb
+    );
+    $$
+);

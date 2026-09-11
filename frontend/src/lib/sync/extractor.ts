@@ -18,6 +18,26 @@ export interface ExtractedMetadata {
   tipo_posto: string;
 }
 
+export function decodeHtmlEntities(text: string | null | undefined): string {
+  if (!text) return '';
+  return text
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(Number(dec)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&#8217;/g, "'")
+    .replace(/&#8216;/g, "'")
+    .replace(/&#8220;/g, '"')
+    .replace(/&#8221;/g, '"')
+    .replace(/&#8211;/g, '–')
+    .replace(/&#8212;/g, '—')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&nbsp;/g, ' ')
+    .trim();
+}
+
 const MESI_ITALIANI: Record<string, number> = {
   gennaio: 1, febbraio: 2, marzo: 3, aprile: 4,
   maggio: 5, giugno: 6, luglio: 7, agosto: 8,
@@ -179,6 +199,7 @@ export function extractPeriodo(text: string): { periodo_desc: string | null; per
 
 export function extractSchoolInfo(title: string, text: string) {
   const res = { school_name: null as string | null, school_code: null as string | null, school_city: null as string | null, school_address: null as string | null };
+  const cleanTitle = decodeHtmlEntities(title);
 
   const mCode = text.match(/\b(PD[A-Z0-9]{8})\b/i);
   if (mCode) res.school_code = mCode[1].toUpperCase();
@@ -186,12 +207,10 @@ export function extractSchoolInfo(title: string, text: string) {
   const mAddr = text.match(/(Via|Viale|Corso|Piazza|Riviera)\s+[^\n\r,\-]+,\s*\d+[^\n\r]*/i);
   if (mAddr) res.school_address = mAddr[0].trim();
 
-  const parts = title.split(/\s*[–\-\:]\s*/);
-  if (parts.length > 0) {
+  const parts = cleanTitle.split(/\s*(?:[–\-\:]|&#8211;|&ndash;)\s*/);
+  if (parts.length > 0 && parts[0].trim().length > 0) {
     const candidate = parts[0].trim();
-    if (["ic", "istituto", "liceo", "iis", "itis", "scuola"].some(w => candidate.toLowerCase().includes(w))) {
-      res.school_name = candidate;
-    }
+    res.school_name = candidate;
   }
 
   const mCity = text.match(/\b35\d{3}\s+([A-Z\s\']+)\s*\([Pp][Dd]\)/);

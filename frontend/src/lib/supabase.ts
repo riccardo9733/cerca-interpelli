@@ -1,5 +1,14 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
+if (typeof globalThis.WebSocket === 'undefined') {
+  try {
+    (globalThis as any).WebSocket = require('ws');
+  } catch (_) {
+    class DummyWebSocket {}
+    (globalThis as any).WebSocket = DummyWebSocket;
+  }
+}
+
 const DEFAULT_SUPABASE_URL = 'https://oysatbtuiyfupeuezzai.supabase.co';
 const DEFAULT_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95c2F0YnR1aXlmdXBldWV6emFpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwNjE5MTAsImV4cCI6MjEwNDYzNzkxMH0.tt0CGIDxWXQwmdcEtEnTi3lZurmCgBB03QN-bXCr0Xs';
 
@@ -28,11 +37,11 @@ function getValidServiceKey(): string {
 }
 
 export function getSupabaseClient(): SupabaseClient {
-  return createClient(getValidUrl(), getValidAnonKey());
+  return createClient(getValidUrl(), getValidAnonKey(), { auth: { persistSession: false } });
 }
 
 export function getAdminSupabase(): SupabaseClient {
-  return createClient(getValidUrl(), getValidServiceKey());
+  return createClient(getValidUrl(), getValidServiceKey(), { auth: { persistSession: false } });
 }
 
 // Client Proxy valutato pigramente (lazy) solo a runtime per evitare errori durante il build di Vercel

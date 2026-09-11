@@ -1,5 +1,5 @@
 import { getAdminSupabase } from '../supabase';
-import { extractMetadata } from './extractor';
+import { extractMetadata, decodeHtmlEntities } from './extractor';
 import { resolveLocation } from './geocoder';
 import { downloadAndExtractPdfText } from './pdfParser';
 
@@ -24,10 +24,9 @@ export function parseAttachmentsFromHtml(html: string): Attachment[] {
 
     if (['.pdf', '.docx', '.doc', '.p7m'].some(ext => lowerUrl.includes(ext))) {
       const cleanTextLower = text.toLowerCase();
-      const urlLower = url.toLowerCase();
 
-      const isDomanda = ['allegato', 'domanda', 'candidatura', 'modello'].some(k => cleanTextLower.includes(k) || urlLower.includes(k));
-      const isBando = !isDomanda && ['interpello', 'avviso', 'bando', 'timbro', 'segnatura', 'signed'].some(k => cleanTextLower.includes(k) || urlLower.includes(k));
+      const isDomanda = ['allegato', 'domanda', 'candidatura', 'modello'].some(k => cleanTextLower.includes(k) || lowerUrl.includes(k));
+      const isBando = !isDomanda && ['interpello', 'avviso', 'bando', 'timbro', 'segnatura', 'signed'].some(k => cleanTextLower.includes(k) || lowerUrl.includes(k));
 
       attachments.push({
         name: text || url.split('/').pop() || 'Allegato',
@@ -64,7 +63,7 @@ export async function syncInterpelli() {
 
     for (const p of posts) {
       const wpId = p.id;
-      const title = p.title?.rendered || '';
+      const title = decodeHtmlEntities(p.title?.rendered || '');
       const slug = p.slug || '';
       const wpDate = p.date;
       const wpModified = p.modified || wpDate;

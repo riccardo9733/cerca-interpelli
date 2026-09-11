@@ -1,7 +1,5 @@
-// Supabase Edge Function: Sync Interpelli
-// Deployed to https://<project-ref>.supabase.co/functions/v1/sync
-
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import padovaSchoolsData from "./padova_schools.json" with { type: "json" };
 
 const WP_API_URL = "https://padova.istruzioneveneto.gov.it/wp-json/wp/v2/posts?categories=212&per_page=50";
 
@@ -10,6 +8,55 @@ interface Attachment {
   url: string;
   is_bando: boolean;
   is_domanda: boolean;
+}
+
+function decodeHtmlEntities(text: string | null | undefined): string {
+  if (!text) return '';
+  return text
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(Number(dec)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&#8217;/g, "'")
+    .replace(/&#8216;/g, "'")
+    .replace(/&#8220;/g, '"')
+    .replace(/&#8221;/g, '"')
+    .replace(/&#8211;/g, '–')
+    .replace(/&#8212;/g, '—')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&nbsp;/g, ' ')
+    .trim();
+}
+
+function escapeRegExp(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function extractCleanSchoolName(title: string): string {
+  const cleanTitle = decodeHtmlEntities(title);
+  const cleanLower = cleanTitle.toLowerCase();
+
+  for (const school of padovaSchoolsData as any[]) {
+    if (school.code && cleanLower.includes(school.code.toLowerCase())) {
+      return school.name;
+    }
+    if (school.aliases) {
+      for (const alias of school.aliases) {
+        if (alias.length >= 4 && cleanLower.includes(alias.toLowerCase())) {
+          return school.name;
+        }
+      }
+    }
+  }
+
+  const parts = cleanTitle.split(/\s*(?:[–\-\:]|&#8211;|&ndash;)\s*/);
+  if (parts.length > 0 && parts[0].trim().length > 0) {
+    return parts[0].trim();
+  }
+
+  return "Scuola Padova";
 }
 
 const MESI_ITALIANI: Record<string, number> = {
@@ -169,7 +216,8 @@ Deno.serve(async (req) => {
 
     for (const p of posts) {
       const wpId = p.id;
-      const title = p.title?.rendered || '';
+      const rawTitle = p.title?.rendered || '';
+      const title = decodeHtmlEntities(rawTitle);
       const slug = p.slug || '';
       const wpDate = p.date;
       const wpModified = p.modified || wpDate;
@@ -178,11 +226,13 @@ Deno.serve(async (req) => {
 
       const { data: existing } = await supabase
         .from('interpelli')
-        .select('wp_id, wp_modified')
+        .select('wp_id, wp_modified, school_name, title')
         .eq('wp_id', wpId)
         .maybeSingle();
 
-      if (existing && existing.wp_modified === wpModified) {
+      const schoolName = extractCleanSchoolName(title);
+
+      if (existing && existing.wp_modified === wpModified && existing.school_name === schoolName && existing.title === title) {
         continue;
       }
 
@@ -197,7 +247,7 @@ Deno.serve(async (req) => {
         wp_date: wpDate,
         wp_modified: wpModified,
         wp_url: wpUrl,
-        school_name: title.split(/\s*[–\-\:]\s*/)[0] || "Scuola Padova",
+        school_name: schoolName,
         classi_concorso: classi,
         scadenza: scadenzaIso,
         scadenza_raw: scadenzaRaw,
