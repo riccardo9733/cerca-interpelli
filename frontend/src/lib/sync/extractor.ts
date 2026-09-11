@@ -204,8 +204,16 @@ export function extractSchoolInfo(title: string, text: string) {
   const mCode = text.match(/\b(PD[A-Z0-9]{8})\b/i);
   if (mCode) res.school_code = mCode[1].toUpperCase();
 
-  const mAddr = text.match(/(Via|Viale|Corso|Piazza|Riviera)\s+[^\n\r,\-]+,\s*\d+[^\n\r]*/i);
-  if (mAddr) res.school_address = mAddr[0].trim();
+  // Rimuovi falsi positivi come "corso oggetto...", "corso di...", "corso concorsuale"
+  const textForAddress = text.replace(/corso\s+(?:oggetto|di|delle|del|sul|abilitante|concorsuale|specializzazione|formazione|perfezionamento)/gi, '');
+
+  const mAddr = textForAddress.match(/\b(Via|Viale|Corso|Piazza|Piazzetta|Riviera|Largo|Vicolo|Contrada)\s+([A-ZÀ-Úa-zà-ú0-9'\.\s]{2,35}?)(?:,\s*|\s+)(?:n\.?|n°|civico)?\s*(\d+[a-zA-Z]?)\b(?:\s*,?\s*(\d{5})?\s*([A-ZÀ-Úa-zà-ú\s'\-]+)?(?:\([A-Z]{2}\))?)?/i);
+  if (mAddr) {
+    const candidateAddr = mAddr[0].trim();
+    if (candidateAddr.length <= 80 && !/prestato|servizio|interpello|candidatura|graduatoria|posto/i.test(candidateAddr)) {
+      res.school_address = candidateAddr;
+    }
+  }
 
   const parts = cleanTitle.split(/\s*(?:[–\-\:]|&#8211;|&ndash;)\s*/);
   if (parts.length > 0 && parts[0].trim().length > 0) {

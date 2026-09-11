@@ -30,27 +30,71 @@ function decodeHtmlEntities(text: string | null | undefined): string {
     .trim();
 }
 
-function escapeRegExp(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+function normalizeText(str: string | null | undefined): string {
+  if (!str) return '';
+  return str
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/['’`\.]/g, "")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
-function extractCleanSchoolName(title: string): string {
-  const cleanTitle = decodeHtmlEntities(title);
-  const cleanLower = cleanTitle.toLowerCase();
+function resolveSchoolFromCatalog(title: string): any | null {
+  const normTitle = normalizeText(title);
 
+  // 1. Ricerca per codice o plesso
   for (const school of padovaSchoolsData as any[]) {
-    if (school.code && cleanLower.includes(school.code.toLowerCase())) {
-      return school.name;
+    if (school.code && normTitle.includes(normalizeText(school.code))) {
+      return school;
     }
-    if (school.aliases) {
-      for (const alias of school.aliases) {
-        if (alias.length >= 4 && cleanLower.includes(alias.toLowerCase())) {
-          return school.name;
+    if (school.plessi) {
+      for (const p of school.plessi) {
+        if (normTitle.includes(normalizeText(p))) {
+          return school;
         }
       }
     }
   }
 
+  // 2. Ricerca per nome scuola esatto/normalizzato
+  for (const school of padovaSchoolsData as any[]) {
+    const normCatalogName = normalizeText(school.name);
+    if (normCatalogName.length >= 4 && (normTitle.includes(normCatalogName) || normCatalogName.includes(normTitle))) {
+      return school;
+    }
+  }
+
+  // 3. Ricerca per alias (ordinati per lunghezza decrescente)
+  const aliasList: { len: number; normAlias: string; school: any }[] = [];
+  for (const school of padovaSchoolsData as any[]) {
+    if (school.aliases) {
+      for (const alias of school.aliases) {
+        const normAlias = normalizeText(alias);
+        if (normAlias.length >= 4) {
+          aliasList.push({ len: normAlias.length, normAlias, school });
+        }
+      }
+    }
+  }
+  aliasList.sort((a, b) => b.len - a.len);
+
+  for (const item of aliasList) {
+    if (normTitle.includes(item.normAlias)) {
+      return item.school;
+    }
+  }
+
+  return null;
+}
+
+function extractCleanSchoolName(title: string): string {
+  const matched = resolveSchoolFromCatalog(title);
+  if (matched) return matched.name;
+
+  const cleanTitle = decodeHtmlEntities(title);
   const parts = cleanTitle.split(/\s*(?:[–\-\:]|&#8211;|&ndash;)\s*/);
   if (parts.length > 0 && parts[0].trim().length > 0) {
     return parts[0].trim();
@@ -230,7 +274,8 @@ Deno.serve(async (req) => {
         .eq('wp_id', wpId)
         .maybeSingle();
 
-      const schoolName = extractCleanSchoolName(title);
+      const matchedSchool = resolveSchoolFromCatalog(title);
+      const schoolName = matchedSchool ? matchedSchool.name : extractCleanSchoolName(title);
 
       if (existing && existing.wp_modified === wpModified && existing.school_name === schoolName && existing.title === title) {
         continue;
@@ -248,6 +293,11 @@ Deno.serve(async (req) => {
         wp_modified: wpModified,
         wp_url: wpUrl,
         school_name: schoolName,
+        school_code: matchedSchool ? matchedSchool.code : null,
+        school_address: matchedSchool ? matchedSchool.address : null,
+        school_city: matchedSchool ? matchedSchool.city : 'Padova',
+        latitude: matchedSchool ? matchedSchool.lat : 45.4064,
+        longitude: matchedSchool ? matchedSchool.lon : 11.8768,
         classi_concorso: classi,
         attachments: attachments,
         updated_at: new Date().toISOString()
