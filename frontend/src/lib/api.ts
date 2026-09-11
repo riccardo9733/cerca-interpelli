@@ -1,5 +1,6 @@
 import { Interpello, Stats, SyncResult } from '@/types/interpello';
 import { formatInterpelloItem } from '@/lib/formatInterpello';
+import { getValidUrl, getValidAnonKey } from '@/lib/supabase';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
@@ -79,8 +80,8 @@ export async function updateInterpelloStatus(
 }
 
 export async function triggerManualSync(): Promise<SyncResult> {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://oysatbtuiyfupeuezzai.supabase.co';
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95c2F0YnR1aXlmdXBldWV6emFpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwNjE5MTAsImV4cCI6MjEwNDYzNzkxMH0.tt0CGIDxWXQwmdcEtEnTi3lZurmCgBB03QN-bXCr0Xs';
+  const supabaseUrl = getValidUrl();
+  const supabaseAnonKey = getValidAnonKey();
 
   // 1. Tenta la chiamata diretta dal browser all'Edge Function (3s con CORS attivo)
   try {
@@ -140,8 +141,8 @@ export interface ScanAIResult {
 }
 
 export async function scanInterpelloWithAI(wpId: number): Promise<ScanAIResult> {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://oysatbtuiyfupeuezzai.supabase.co';
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95c2F0YnR1aXlmdXBldWV6emFpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwNjE5MTAsImV4cCI6MjEwNDYzNzkxMH0.tt0CGIDxWXQwmdcEtEnTi3lZurmCgBB03QN-bXCr0Xs';
+  const supabaseUrl = getValidUrl();
+  const supabaseAnonKey = getValidAnonKey();
 
   // 1. Tenta prima la chiamata diretta dal browser alla Supabase Edge Function 'sync-ai'
   // Questo evita il limite di timeout di Vercel (10-15s sui piani Free) e problemi di variabili d'ambiente nel deploy

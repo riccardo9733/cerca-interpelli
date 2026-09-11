@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { syncInterpelli } from '@/lib/sync/wpFetcher';
+import { getValidUrl, getValidServiceKey } from '@/lib/supabase';
 
 export const maxDuration = 60; // Consente fino a 60s per le funzioni Vercel Serverless
 
@@ -13,8 +14,8 @@ export async function POST(req: NextRequest) {
       // Se è impostato CRON_SECRET e l'header non corrisponde
     }
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || 'https://oysatbtuiyfupeuezzai.supabase.co';
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95c2F0YnR1aXlmdXBldWV6emFpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwNjE5MTAsImV4cCI6MjEwNDYzNzkxMH0.tt0CGIDxWXQwmdcEtEnTi3lZurmCgBB03QN-bXCr0Xs';
+    const supabaseUrl = getValidUrl();
+    const supabaseKey = getValidServiceKey();
 
     // Invocazione sicura della Supabase Edge Function 'sync'
     if (supabaseUrl && supabaseKey) {
