@@ -17,7 +17,9 @@ import {
   Send,
   AlertCircle,
   Briefcase,
-  Landmark
+  Landmark,
+  Sparkles,
+  Loader2
 } from 'lucide-react';
 import { getClassInfo } from '@/lib/classiConcorso';
 import { Interpello, UserLocation } from '@/types/interpello';
@@ -33,6 +35,8 @@ interface InterpelloModalProps {
   onTogglePreferito: (id: number) => void;
   onToggleCandidato: (id: number) => void;
   onSaveNotes: (id: number, notes: string) => Promise<void> | void;
+  onScanAI?: (wpId: number) => void;
+  isScanningAI?: boolean;
   userLocation?: UserLocation | null;
 }
 
@@ -42,6 +46,8 @@ export function InterpelloModal({
   onTogglePreferito,
   onToggleCandidato,
   onSaveNotes,
+  onScanAI,
+  isScanningAI,
   userLocation,
 }: InterpelloModalProps) {
 
@@ -233,10 +239,18 @@ export function InterpelloModal({
           </div>
 
           {/* Dettagli Cattedra e Concorso */}
-          <div className="p-3.5 rounded-lg border border-border bg-muted/20 space-y-2">
-            <span className="text-[11px] font-medium text-foreground uppercase tracking-wider">
-              Specifiche Incarico
-            </span>
+          <div className="p-3.5 rounded-lg border border-border bg-muted/20 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-medium text-foreground uppercase tracking-wider">
+                Specifiche Incarico
+              </span>
+              {interpello.posti_dettaglio && interpello.posti_dettaglio.length > 1 && (
+                <Badge variant="outline" className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 border-amber-500/40 bg-amber-50 dark:bg-amber-950/30">
+                  {interpello.posti_dettaglio.length} Posizioni / Cattedre distinte nel bando
+                </Badge>
+              )}
+            </div>
+
             <div className="flex flex-wrap gap-1.5 items-center">
               {interpello.classi_concorso.map((cls) => {
                 const info = getClassInfo(cls);
@@ -263,10 +277,54 @@ export function InterpelloModal({
               )}
               {interpello.posti_disponibili && (
                 <Badge variant="secondary" className="font-mono">
-                  {interpello.posti_disponibili} posti
+                  {interpello.posti_disponibili} {interpello.posti_disponibili === 1 ? 'posto' : 'posti totali'}
                 </Badge>
               )}
             </div>
+
+            {/* Schede Analitiche delle singole posizioni se presenti */}
+            {interpello.posti_dettaglio && interpello.posti_dettaglio.length > 0 && (
+              <div className="mt-3 pt-3 border-t border-border/60 space-y-2">
+                <span className="text-[11px] font-semibold text-foreground block">
+                  Prospetto Cattedre Disponibili:
+                </span>
+                <div className="space-y-2">
+                  {interpello.posti_dettaglio.map((pos, idx) => (
+                    <div key={idx} className="p-2.5 rounded-md bg-card border border-border/80 flex flex-col gap-1 text-xs">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <div className="flex items-center gap-1.5 font-medium text-foreground">
+                          {pos.codice_classe && (
+                            <Badge variant="code" className="text-[11px] px-1.5 py-0.5">
+                              {pos.codice_classe}
+                            </Badge>
+                          )}
+                          <span>{pos.tipo_posto || 'Posto'}</span>
+                          {pos.ordine_scuola && <span className="text-muted-foreground">· {pos.ordine_scuola}</span>}
+                        </div>
+                        <div className="flex items-center gap-1.5 font-mono text-[11px] shrink-0">
+                          {pos.posti && (
+                            <span className="font-semibold text-foreground bg-muted px-1.5 py-0.5 rounded border border-border/50">
+                              {pos.posti} {pos.posti === 1 ? 'posto' : 'posti'}
+                            </span>
+                          )}
+                          {pos.ore && (
+                            <span className="text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded">
+                              {pos.ore}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      {(pos.periodo || pos.note) && (
+                        <div className="text-[11px] text-muted-foreground flex flex-wrap items-center gap-2 pt-0.5">
+                          {pos.periodo && <span>📅 {pos.periodo}</span>}
+                          {pos.note && <span className="text-amber-600 dark:text-amber-400 italic">📌 {pos.note}</span>}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Modalità di Candidatura (Email/PEC o Form) */}
@@ -465,6 +523,30 @@ export function InterpelloModal({
               <Bookmark className={`w-3.5 h-3.5 ${isPreferito ? 'fill-current' : ''}`} />
               <span>{isPreferito ? 'Salvato nei preferiti' : 'Salva nei preferiti'}</span>
             </Button>
+
+            {onScanAI && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onScanAI(interpello.wp_id)}
+                disabled={isScanningAI}
+                className="text-xs h-8 gap-1.5 text-purple-700 dark:text-purple-300 border-purple-300 dark:border-purple-800/60 bg-purple-50/70 dark:bg-purple-950/30 hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors shadow-2xs"
+                title="Esegui o ripeti la scansione approfondita con IA su questo bando"
+              >
+                {isScanningAI ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-purple-600 dark:text-purple-400" />
+                    <span className="hidden sm:inline">Scansione in corso...</span>
+                    <span className="sm:hidden">Analisi...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                    <span>Scansione IA</span>
+                  </>
+                )}
+              </Button>
+            )}
           </div>
 
           <a

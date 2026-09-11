@@ -6,9 +6,21 @@ export interface AttachmentItem {
   local_path?: string | null;
 }
 
+export interface PositionItem {
+  codice_classe?: string | null;
+  ordine_scuola?: string | null;
+  tipo_posto?: string | null;
+  posti?: number | null;
+  ore?: string | null;
+  periodo?: string | null;
+  note?: string | null;
+}
+
 export interface Interpello {
   id: number;
   wp_id: number;
+  item_key?: string | null;
+  position_index?: number | null;
   title: string;
   slug?: string | null;
   wp_date: string;
@@ -35,6 +47,7 @@ export interface Interpello {
   email_candidatura?: string | null;
   oggetto_email?: string | null;
   link_candidatura?: string | null;
+  posti_dettaglio?: PositionItem[] | null;
 
   attachments: AttachmentItem[];
   content_raw?: string | null;

@@ -5,7 +5,9 @@
 -- 1. Tabella principale Interpelli
 CREATE TABLE IF NOT EXISTS interpelli (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    wp_id BIGINT UNIQUE NOT NULL,
+    wp_id BIGINT NOT NULL,
+    item_key TEXT UNIQUE NOT NULL,             -- Chiave univoca posizione (es: "12345-1", "12345-2")
+    position_index INT DEFAULT 1,              -- Indice sequenziale posizione nel bando
     title TEXT NOT NULL,
     slug TEXT,
     wp_date TIMESTAMPTZ NOT NULL,
@@ -20,13 +22,13 @@ CREATE TABLE IF NOT EXISTS interpelli (
     latitude DOUBLE PRECISION,
     longitude DOUBLE PRECISION,
     
-    -- Metadati estratti
-    classi_concorso JSONB DEFAULT '[]'::jsonb, -- Array di stringhe es: ["ADEE", "ADMM"]
+    -- Metadati estratti per la specifica posizione
+    classi_concorso JSONB DEFAULT '[]'::jsonb, -- Array di stringhe es: ["ADEE"]
     ordine_scuola TEXT,                         -- Infanzia, Primaria, Secondaria I, Secondaria II
     tipo_posto TEXT,                            -- Sostegno, Comune, ecc.
-    posti_disponibili INT,                      -- Numero posti
+    posti_disponibili INT,                      -- Numero posti per questa posizione
     ore_settimanali TEXT,                       -- es: 24 ore, 18h, spezzone
-    periodo_desc TEXT,                          -- Descrizione periodo (es: dal 14/09/2026 al 30/06/2027)
+    periodo_desc TEXT,                          -- Descrizione periodo
     periodo_inizio DATE,                        -- Data inizio
     periodo_fine DATE,                          -- Data fine
     scadenza TIMESTAMPTZ,                       -- Scadenza perentoria
@@ -34,6 +36,7 @@ CREATE TABLE IF NOT EXISTS interpelli (
     email_candidatura TEXT,                     -- Email / PEC
     oggetto_email TEXT,                         -- Oggetto obbligatorio
     link_candidatura TEXT,                      -- Form telematico
+    posti_dettaglio JSONB DEFAULT '[]'::jsonb,  -- Dettagli aggiuntivi opzionali
     
     -- Allegati & Contenuti
     attachments JSONB DEFAULT '[]'::jsonb,     -- JSON array di {name, url, is_bando, is_domanda}
@@ -49,6 +52,8 @@ CREATE TABLE IF NOT EXISTS interpelli (
 
 -- Indici per velocizzare ricerche e filtri
 CREATE INDEX IF NOT EXISTS idx_interpelli_wp_date ON interpelli(wp_date DESC);
+CREATE INDEX IF NOT EXISTS idx_interpelli_wp_id ON interpelli(wp_id);
+CREATE INDEX IF NOT EXISTS idx_interpelli_item_key ON interpelli(item_key);
 CREATE INDEX IF NOT EXISTS idx_interpelli_scadenza ON interpelli(scadenza);
 CREATE INDEX IF NOT EXISTS idx_interpelli_status ON interpelli(status_candidatura);
 CREATE INDEX IF NOT EXISTS idx_interpelli_school_code ON interpelli(school_code);
@@ -93,7 +98,7 @@ SELECT cron.schedule(
     '*/10 5-19 * * *',
     $$
     SELECT net.http_post(
-        url := 'https://oysatbtuiyfupeuezzai.supabase.co/functions/v1/sync',
+        url := 'https://oysatbtuiyfupeuezzai.supabase.co/functions/v1/sync-ai',
         headers := '{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95c2F0YnR1aXlmdXBldWV6emFpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwNjE5MTAsImV4cCI6MjEwNDYzNzkxMH0.tt0CGIDxWXQwmdcEtEnTi3lZurmCgBB03QN-bXCr0Xs", "apikey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95c2F0YnR1aXlmdXBldWV6emFpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwNjE5MTAsImV4cCI6MjEwNDYzNzkxMH0.tt0CGIDxWXQwmdcEtEnTi3lZurmCgBB03QN-bXCr0Xs"}'::jsonb
     );
     $$

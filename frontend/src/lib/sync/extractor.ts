@@ -1,3 +1,5 @@
+import { PositionItem } from '@/types/interpello';
+
 export interface ExtractedMetadata {
   classi_concorso: string[];
   scadenza: string | null;
@@ -16,6 +18,7 @@ export interface ExtractedMetadata {
   link_candidatura: string | null;
   ordine_scuola: string;
   tipo_posto: string;
+  posti_dettaglio?: PositionItem[];
 }
 
 export function decodeHtmlEntities(text: string | null | undefined): string {
@@ -81,12 +84,31 @@ export function parseItalianDate(dateStr: string | null | undefined): Date | nul
   return null;
 }
 
+export function isValidMiurClassCode(code: string): boolean {
+  const c = code.toUpperCase();
+  if (["ADAA", "ADEE", "ADMM", "ADSS", "ADEI", "EEEE", "AAAA", "PPPP"].includes(c)) return true;
+  
+  // A001 - A066
+  const mA = c.match(/^A0([0-5][0-9]|6[0-6])$/);
+  if (mA) return true;
+
+  // B001 - B032
+  const mB = c.match(/^B0([0-2][0-9]|3[0-2])$/);
+  if (mB) return true;
+
+  // Lingue straniere (es. AA24, AB25, AD24, etc.) e Strumento (es. AJ55, A055)
+  if (/^(?:AA|AB|AC|AD|AE|AF|AG|AH|AI|AJ|AK)(?:24|25|55|56)$/.test(c)) return true;
+
+  return false;
+}
+
 export function extractClassiConcorso(text: string, title?: string | null): string[] {
   const found = new Set<string>();
 
   const knownCodes = ["ADAA", "ADEE", "ADMM", "ADSS", "ADEI", "EEEE", "AAAA", "PPPP"];
   for (const code of knownCodes) {
-    const regex = new RegExp(`\\b${code}\\b`, 'i');
+    // Escludi falsi positivi come gg/mm/aaaa per il codice AAAA
+    const regex = new RegExp(`(?<![/-])\\b${code}\\b(?![/-])`, code === 'AAAA' ? '' : 'i');
     if (regex.test(text)) {
       found.add(code.toUpperCase());
     }
@@ -99,40 +121,43 @@ export function extractClassiConcorso(text: string, title?: string | null): stri
       if (cleanCode.length === 3 && /^[0-9]+$/.test(cleanCode.slice(1))) {
         cleanCode = `${cleanCode[0]}0${cleanCode.slice(1)}`;
       }
-      if (/^(?:A[0-9]{3}|A[A-Z][0-9]{2}|B[0-9]{3}|ADAA|ADEE|ADMM|ADSS|ADEI|AAAA|EEEE|PPPP)$/.test(cleanCode)) {
+      if (isValidMiurClassCode(cleanCode)) {
         found.add(cleanCode);
       }
     }
   }
 
   const ltCombined = `${title || ''} ${text}`.toLowerCase();
+  const isPrimaryOrInfanzia = found.has("ADEE") || found.has("EEEE") || found.has("ADAA") || found.has("AAAA") || ltCombined.includes("primaria") || ltCombined.includes("infanzia");
 
-  if (ltCombined.includes("tedesco") || ltCombined.includes("lingua tedesca")) {
-    if (ltCombined.includes("secondaria di secondo") || ltCombined.includes("superiori") || ltCombined.includes("ii grado")) {
-      found.add("AD24");
-    } else {
-      found.add("AD25");
+  if (!isPrimaryOrInfanzia) {
+    if (ltCombined.includes("tedesco") || ltCombined.includes("lingua tedesca")) {
+      if (ltCombined.includes("secondaria di secondo") || ltCombined.includes("superiori") || ltCombined.includes("ii grado")) {
+        found.add("AD24");
+      } else if (ltCombined.includes("secondaria") || ltCombined.includes("medie") || ltCombined.includes("i grado")) {
+        found.add("AD25");
+      }
     }
-  }
-  if (ltCombined.includes("inglese") || ltCombined.includes("lingua inglese")) {
-    if (ltCombined.includes("secondaria di secondo") || ltCombined.includes("superiori") || ltCombined.includes("ii grado")) {
-      found.add("AA24");
-    } else {
-      found.add("AA25");
+    if (ltCombined.includes("inglese") || ltCombined.includes("lingua inglese")) {
+      if (ltCombined.includes("secondaria di secondo") || ltCombined.includes("superiori") || ltCombined.includes("ii grado")) {
+        found.add("AA24");
+      } else if (ltCombined.includes("secondaria") || ltCombined.includes("medie") || ltCombined.includes("i grado")) {
+        found.add("AA25");
+      }
     }
-  }
-  if (ltCombined.includes("francese") || ltCombined.includes("lingua francese")) {
-    if (ltCombined.includes("secondaria di secondo") || ltCombined.includes("superiori") || ltCombined.includes("ii grado")) {
-      found.add("AB24");
-    } else {
-      found.add("AB25");
+    if (ltCombined.includes("francese") || ltCombined.includes("lingua francese")) {
+      if (ltCombined.includes("secondaria di secondo") || ltCombined.includes("superiori") || ltCombined.includes("ii grado")) {
+        found.add("AB24");
+      } else if (ltCombined.includes("secondaria") || ltCombined.includes("medie") || ltCombined.includes("i grado")) {
+        found.add("AB25");
+      }
     }
-  }
-  if (ltCombined.includes("spagnolo") || ltCombined.includes("lingua spagnola")) {
-    if (ltCombined.includes("secondaria di secondo") || ltCombined.includes("superiori") || ltCombined.includes("ii grado")) {
-      found.add("AC24");
-    } else {
-      found.add("AC25");
+    if (ltCombined.includes("spagnolo") || ltCombined.includes("lingua spagnola")) {
+      if (ltCombined.includes("secondaria di secondo") || ltCombined.includes("superiori") || ltCombined.includes("ii grado")) {
+        found.add("AC24");
+      } else if (ltCombined.includes("secondaria") || ltCombined.includes("medie") || ltCombined.includes("i grado")) {
+        found.add("AC25");
+      }
     }
   }
 
@@ -151,8 +176,8 @@ export function extractClassiConcorso(text: string, title?: string | null): stri
       else if (t.includes("secondaria di primo grado") || t.includes("medie") || t.includes("i grado") || t.includes("sc. secondaria")) { found.add("ADMM"); break; }
       else if (t.includes("secondaria di secondo grado") || t.includes("superiori") || t.includes("ii grado")) { found.add("ADSS"); break; }
     } else if (t.includes("posto comune") || t.includes("comune")) {
-      if (t.includes("infanzia") || t.includes("matern")) { found.add("AAAA"); break; }
-      else if (t.includes("primaria") || t.includes("elementare")) { found.add("EEEE"); break; }
+      if (t.includes("primaria") || t.includes("elementare")) { found.add("EEEE"); break; }
+      else if (t.includes("infanzia") || t.includes("matern")) { found.add("AAAA"); break; }
     }
   }
 
@@ -286,16 +311,42 @@ export function extractOreEPosti(text: string, ordine?: string | null): [string 
     return [ore, posti];
   }
 
-  const mOre = text.match(/\b(\d{1,2})\s*(?:ore|h)\b/i);
-  if (mOre) {
-    ore = `${mOre[1]} ore settimanali`;
-  } else if (text.toLowerCase().includes("cattedra intera") || text.toLowerCase().includes("posto intero")) {
-    if (ordine === "Infanzia") ore = "25 ore settimanali";
-    else if (ordine === "Primaria") ore = "24 ore settimanali";
-    else if (ordine === "Secondaria I grado" || ordine === "Secondaria II grado") ore = "18 ore settimanali";
-    else ore = "Cattedra intera";
-  } else if (text.toLowerCase().includes("spezzone")) {
-    ore = "Spezzone orario";
+  const mFrac = text.match(/\b(\d{1,2}\/(?:18|24|25|\d{1,2}))\s*[hH]\b/i) ||
+                text.match(/\b(\d{1,2}\/(?:18|24|25))\s*(?:ore)?\b(?!\s*[\/-]\d{2,4})/i);
+  if (mFrac) {
+    ore = `${mFrac[1]} ore settimanali`;
+  }
+
+  if (!ore) {
+    const mOreBefore = text.match(/(?:n[°\.]?\s*)?ore(?:\s+settimanali)?(?:\s*[:=\-]\s*|\s+(?:di\s+)?)(?!settimanali\b)(\d{1,2})\b(?!\s*[:\.]\d{2}|\s+del\b|\s+giorno\b|\s+della\b|\s+di\s+[a-zA-Zàèéìòù]+|\s+[/-]\d{2})/i);
+    if (mOreBefore) {
+      const num = parseInt(mOreBefore[1], 10);
+      if (num > 0 && num <= 36) ore = `${num} ore settimanali`;
+    }
+  }
+
+  if (!ore) {
+    const mSpezzone = text.match(/spezzone(?:\s+orario)?(?:\s+di)?\s+(\d{1,2})\s*(?:ore|h)\b/i);
+    if (mSpezzone) {
+      ore = `${mSpezzone[1]} ore settimanali`;
+    } else {
+      const mOreAfter = text.match(/(?<![\/-])\b(\d{1,2})\s*(?:ore\s+settimanali|ore|h)\b(?!\s*[:\.]\d{2})/i);
+      if (mOreAfter) {
+        const num = parseInt(mOreAfter[1], 10);
+        if (num > 0 && num <= 36) ore = `${num} ore settimanali`;
+      }
+    }
+  }
+
+  if (!ore) {
+    if (text.toLowerCase().includes("cattedra intera") || text.toLowerCase().includes("posto intero")) {
+      if (ordine === "Infanzia") ore = "25 ore settimanali";
+      else if (ordine === "Primaria") ore = "24 ore settimanali";
+      else if (ordine === "Secondaria I grado" || ordine === "Secondaria II grado") ore = "18 ore settimanali";
+      else ore = "Cattedra intera";
+    } else if (text.toLowerCase().includes("spezzone")) {
+      ore = "Spezzone orario";
+    }
   }
 
   const mPosti = text.match(/(?:n[°\.]?\s*)?(\d+)\s+posti\b/i);
@@ -306,6 +357,160 @@ export function extractOreEPosti(text: string, ordine?: string | null): [string 
   }
 
   return [ore, posti];
+}
+
+export function getOrdineByClasse(code: string): string {
+  const c = code.toUpperCase();
+  if (["ADAA", "AAAA"].includes(c)) return "Infanzia";
+  if (["ADEE", "EEEE"].includes(c)) return "Primaria";
+  if (["ADMM", "A022", "A028", "A030", "A049", "A060", "A056"].includes(c) || c.endsWith("25") || c.endsWith("56")) {
+    return "Secondaria I grado";
+  }
+  if (
+    ["ADSS"].includes(c) || 
+    c.endsWith("24") || 
+    c.endsWith("55") || 
+    /^B0[0-3][0-9]$/.test(c) || 
+    (/^A0[0-6][0-9]$/.test(c) && !["A022", "A028", "A030", "A049", "A060", "A056"].includes(c))
+  ) {
+    return "Secondaria II grado";
+  }
+  return "Altro";
+}
+
+export function mergeIdenticalPositions(positions: PositionItem[]): PositionItem[] {
+  if (!positions || positions.length === 0) return [];
+  const merged: PositionItem[] = [];
+  for (const pos of positions) {
+    const key = `${pos.codice_classe || ''}_${pos.ore || ''}_${pos.periodo || ''}_${pos.ordine_scuola || ''}_${pos.tipo_posto || ''}`;
+    const existing = merged.find(m => 
+      `${m.codice_classe || ''}_${m.ore || ''}_${m.periodo || ''}_${m.ordine_scuola || ''}_${m.tipo_posto || ''}` === key
+    );
+    if (existing) {
+      existing.posti = (existing.posti || 1) + (pos.posti || 1);
+      if (pos.note && !existing.note?.includes(pos.note)) {
+        existing.note = existing.note ? `${existing.note}; ${pos.note}` : pos.note;
+      }
+    } else {
+      merged.push({ ...pos });
+    }
+  }
+  return merged;
+}
+
+export function extractPositionsBlocks(text: string): PositionItem[] {
+  const positions: PositionItem[] = [];
+  // 1. FORMATO TABELLARE (es: San Martino di Lupari)
+  const tableRegex = /\b(ADAA|ADEE|ADMM|ADSS|AAAA|EEEE|PPPP|[AB]\d{2,3})\s+([A-Z\s\+]+?)\s+(\d+)\s+(\d{1,2}(?:\/\d{1,2})?\s*[hH]|\d{1,2}\s*ore)\s+(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})\s+(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})/gi;
+  let tm: RegExpExecArray | null;
+  while ((tm = tableRegex.exec(text)) !== null) {
+    const codiceClasse = tm[1].toUpperCase();
+    const tipoRaw = tm[2].replace(/\s+/g, ' ').trim();
+    const postiNum = parseInt(tm[3], 10);
+    const oreStr = tm[4].trim();
+    const inizioStr = tm[5].trim();
+    const fineStr = tm[6].trim();
+
+    const ordine = getOrdineByClasse(codiceClasse);
+
+    let tipoPosto = "Posto Comune";
+    if (tipoRaw.toLowerCase().includes("sostegno") || ["ADAA", "ADEE", "ADMM", "ADSS", "ADEI"].includes(codiceClasse)) {
+      tipoPosto = "Sostegno";
+    }
+
+    positions.push({
+      codice_classe: codiceClasse,
+      ordine_scuola: ordine,
+      tipo_posto: tipoPosto,
+      posti: postiNum,
+      ore: oreStr.toLowerCase().endsWith('h') ? `${oreStr} ore` : oreStr,
+      periodo: `Dal ${inizioStr} al ${fineStr}`,
+      note: tipoRaw.includes("LIS") ? "Conoscenza LIS richiesta" : null
+    });
+  }
+
+  if (positions.length > 0) {
+    return mergeIdenticalPositions(positions);
+  }
+
+  // 2. FORMATO PER SEZIONI E PUNTI ELENCO (Bullet points sotto intestazioni classe)
+  const sections = text.split(/(?=\b(?:ADAA|ADEE|ADMM|ADSS|AAAA|EEEE|PPPP|[AB]\d{2,3})\s*[-–—])/gi);
+  for (const sec of sections) {
+    const headerM = sec.match(/^\s*(ADAA|ADEE|ADMM|ADSS|AAAA|EEEE|PPPP|[AB]\d{2,3})\s*[-–—]\s*([^\n\r]+)/i);
+    if (headerM) {
+      const codiceClasse = headerM[1].toUpperCase();
+      const ordine = getOrdineByClasse(codiceClasse);
+
+      const tipoPosto = ["ADAA", "ADEE", "ADMM", "ADSS", "ADEI"].includes(codiceClasse) || headerM[2].toLowerCase().includes("sostegno") ? "Sostegno" : "Posto Comune";
+
+      const bulletRegex = /[o\-\*•]\s*(\d+)\s+post[oi]\s+([0-9/]+\s*[hH]|[0-9]+\s*ore)\s+(?:dal\s+(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})\s+)?(?:al|fino\s+al)\s+(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})(?:[^\n\r]*)/gi;
+      let bMatch: RegExpExecArray | null;
+      while ((bMatch = bulletRegex.exec(sec)) !== null) {
+        const postiNum = parseInt(bMatch[1], 10);
+        const oreStr = bMatch[2].trim();
+        const inizioStr = bMatch[3] ? bMatch[3].trim() : null;
+        const fineStr = bMatch[4].trim();
+
+        positions.push({
+          codice_classe: codiceClasse,
+          ordine_scuola: ordine,
+          tipo_posto: tipoPosto,
+          posti: postiNum,
+          ore: oreStr.toLowerCase().endsWith('h') ? `${oreStr} ore` : oreStr,
+          periodo: inizioStr ? `Dal ${inizioStr} al ${fineStr}` : `Fino al ${fineStr}`,
+          note: sec.includes("LIS") ? "Conoscenza LIS richiesta" : null
+        });
+      }
+    }
+  }
+
+  if (positions.length > 0) {
+    return mergeIdenticalPositions(positions);
+  }
+
+  // 3. FORMATO TIPOLOGIA DI POSTO (IC Piovene e simili)
+  const regex = /Tipologia\s+di\s+posto:\s*([^\n\r]+)[\r\n]+(?:Numero\s+di\s+posti:\s*)?(\d+)\s+posti?\s*(?:per\s+ore\s*([^\n\r]+?))?(?:fino\s+al\s+([^\n\r]+?))?(?:[\r\n]+((?:Suddiviso|Ore)[^\n\r]+))?/gi;
+  let m: RegExpExecArray | null;
+  while ((m = regex.exec(text)) !== null) {
+    const tipoRaw = m[1].trim();
+    const postiNum = parseInt(m[2], 10);
+    const oreStr = m[3] ? m[3].trim() : null;
+    const finoAlStr = m[4] ? m[4].trim() : null;
+    const noteStr = m[5] ? m[5].trim() : null;
+
+    let ordine = "Altro";
+    let tipoPosto = "Posto Comune";
+    let codiceClasse = null;
+
+    const lowerTipo = tipoRaw.toLowerCase();
+    if (lowerTipo.includes("infanzia")) ordine = "Infanzia";
+    else if (lowerTipo.includes("primaria")) ordine = "Primaria";
+    else if (lowerTipo.includes("primo") || lowerTipo.includes("1°") || lowerTipo.includes("medie")) ordine = "Secondaria I grado";
+    else if (lowerTipo.includes("secondo") || lowerTipo.includes("2°") || lowerTipo.includes("superiori")) ordine = "Secondaria II grado";
+
+    if (lowerTipo.includes("sostegno")) {
+      tipoPosto = "Sostegno";
+      if (ordine === "Infanzia") codiceClasse = "ADAA";
+      else if (ordine === "Primaria") codiceClasse = "ADEE";
+      else if (ordine === "Secondaria I grado") codiceClasse = "ADMM";
+      else if (ordine === "Secondaria II grado") codiceClasse = "ADSS";
+    } else if (lowerTipo.includes("comune")) {
+      tipoPosto = "Posto Comune";
+      if (ordine === "Infanzia") codiceClasse = "AAAA";
+      else if (ordine === "Primaria") codiceClasse = "EEEE";
+    }
+
+    positions.push({
+      codice_classe: codiceClasse,
+      ordine_scuola: ordine,
+      tipo_posto: tipoPosto,
+      posti: postiNum,
+      ore: oreStr ? `${oreStr} ore` : null,
+      periodo: finoAlStr ? `Fino al ${finoAlStr}` : null,
+      note: noteStr
+    });
+  }
+  return mergeIdenticalPositions(positions);
 }
 
 export function extractMetadata(title: string, htmlContent: string, pdfText?: string | null, wpDateStr?: string | null): ExtractedMetadata {
@@ -370,36 +575,24 @@ export function extractMetadata(title: string, htmlContent: string, pdfText?: st
 
   const isIC = ltTitle.includes(" ic ") || ltTitle.includes("ic ") || ltTitle.includes("i.c.") || ltTitle.includes("comprensivo") || lt.includes("istituto comprensivo");
 
-  if (classi.some(c => ["ADAA", "AAAA"].includes(c)) || ltTitle.includes("infanzia") || ltTitle.includes("matern")) {
-    ordine = "Infanzia";
-  } else if (classi.some(c => ["ADEE", "EEEE"].includes(c)) || ltTitle.includes("primaria") || ltTitle.includes("elementar")) {
-    ordine = "Primaria";
-  } else if (
-    classi.includes("ADMM") ||
-    classi.some(c => ["AD25", "AA25", "AB25", "AC25", "A022", "A028", "A030", "A049", "A060"].includes(c)) ||
-    ltTitle.includes("secondaria di primo grado") ||
-    ltTitle.includes("medie") ||
-    ltTitle.includes("i grado") ||
-    ltTitle.includes("1° grado") ||
-    ltTitle.includes("sec. 1") ||
-    ltTitle.includes("sec 1") ||
-    (isIC && (ltTitle.includes("sc. secondaria") || ltTitle.includes("secondaria") || ltTitle.includes("sec. secondaria")))
-  ) {
-    ordine = "Secondaria I grado";
-  } else if (
-    classi.includes("ADSS") ||
-    classi.some(c => ["AD24", "AA24", "AB24", "AC24"].includes(c)) ||
-    ltTitle.includes("secondaria di secondo grado") ||
-    ltTitle.includes("superiori") ||
-    ltTitle.includes("ii grado") ||
-    ltTitle.includes("2° grado") ||
-    ltTitle.includes("sec. 2") ||
-    ltTitle.includes("sec 2")
-  ) {
+  const isSuperiore = ltTitle.includes("i.i.s") || ltTitle.includes("iis") || ltTitle.includes("liceo") || ltTitle.includes("itis") || ltTitle.includes("i.t.i.s") || ltTitle.includes("superiori") || ltTitle.includes("secondaria di secondo grado") || ltTitle.includes("ii grado") || ltTitle.includes("2° grado") || ltTitle.includes("sec. 2");
+
+  const hasInfanziaClass = classi.some(c => getOrdineByClasse(c) === "Infanzia");
+  const hasPrimariaClass = classi.some(c => getOrdineByClasse(c) === "Primaria");
+  const hasMedieClass = classi.some(c => getOrdineByClasse(c) === "Secondaria I grado");
+  const hasSuperioriClass = classi.some(c => getOrdineByClasse(c) === "Secondaria II grado");
+
+  if (hasSuperioriClass || isSuperiore) {
     ordine = "Secondaria II grado";
-  } else if (ltTitle.includes("sc. secondaria") || ltTitle.includes("secondaria")) {
+  } else if (hasMedieClass || (isIC && (ltTitle.includes("secondaria") || ltTitle.includes("medie")))) {
+    ordine = "Secondaria I grado";
+  } else if (hasPrimariaClass || ltTitle.includes("primaria") || ltTitle.includes("elementar") || lt.includes("scuola primaria")) {
+    ordine = "Primaria";
+  } else if (hasInfanziaClass || ltTitle.includes("infanzia") || ltTitle.includes("matern")) {
+    ordine = "Infanzia";
+  } else if (ltTitle.includes("secondaria")) {
     ordine = isIC ? "Secondaria I grado" : "Secondaria II grado";
-  } else if (lt.includes("secondaria di primo grado") || lt.includes("medie") || (isIC && lt.includes("secondaria"))) {
+  } else if (lt.includes("secondaria di primo grado") || lt.includes("medie")) {
     ordine = "Secondaria I grado";
   } else if (lt.includes("secondaria di secondo grado") || lt.includes("superiori")) {
     ordine = "Secondaria II grado";
@@ -424,8 +617,21 @@ export function extractMetadata(title: string, htmlContent: string, pdfText?: st
   const mForm = fullText.match(/https?:\/\/(?:forms\.gle|docs\.google\.com\/forms)[^\s"\'<>]+/);
   if (mForm) linkCandidatura = mForm[0];
 
+  const postiBlocks = extractPositionsBlocks(pdfText || fullText);
+  let finalClassi = classi;
+  let finalPosti = posti;
+
+  if (postiBlocks.length > 0) {
+    const blockClassi = postiBlocks.map(p => p.codice_classe).filter((c): c is string => Boolean(c));
+    if (blockClassi.length > 0) {
+      finalClassi = Array.from(new Set([...classi, ...blockClassi])).sort();
+    }
+    const sumPosti = postiBlocks.reduce((acc, p) => acc + (p.posti || 0), 0);
+    if (sumPosti > 0) finalPosti = sumPosti;
+  }
+
   return {
-    classi_concorso: classi,
+    classi_concorso: finalClassi,
     scadenza: scadenzaIso,
     scadenza_raw: scadenzaRaw,
     periodo_desc: periodoInfo.periodo_desc,
@@ -436,11 +642,12 @@ export function extractMetadata(title: string, htmlContent: string, pdfText?: st
     school_city: schoolInfo.school_city,
     school_address: schoolInfo.school_address,
     ore_settimanali: ore,
-    posti_disponibili: posti,
+    posti_disponibili: finalPosti,
     email_candidatura: email,
     oggetto_email: oggettoEmail,
     link_candidatura: linkCandidatura,
     ordine_scuola: ordine,
     tipo_posto: tipoPosto,
+    posti_dettaglio: postiBlocks
   };
 }

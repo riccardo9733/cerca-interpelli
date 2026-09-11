@@ -83,7 +83,7 @@ export async function triggerManualSync(): Promise<SyncResult> {
 
   // 1. Tenta la chiamata diretta dal browser all'Edge Function (3s con CORS attivo)
   try {
-    const res = await fetch(`${supabaseUrl}/functions/v1/sync`, {
+    const res = await fetch(`${supabaseUrl}/functions/v1/sync?per_page=100&pages=2`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -127,4 +127,29 @@ export async function geocodeAddress(query: string): Promise<GeocodeResult | nul
   }
   return res.json();
 }
+
+export interface ScanAIResult {
+  success: boolean;
+  wp_id: number;
+  ai_extracted?: boolean;
+  items_count: number;
+  updated_items: Interpello[];
+  message?: string;
+  error?: string;
+}
+
+export async function scanInterpelloWithAI(wpId: number): Promise<ScanAIResult> {
+  const res = await fetch(`${API_BASE_URL}/api/scan-ai`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ wp_id: wpId }),
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data.success === false) {
+    throw new Error(data.error || `Errore durante la scansione IA: ${res.statusText}`);
+  }
+  return data;
+}
+
 

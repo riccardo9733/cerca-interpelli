@@ -8,9 +8,10 @@ import {
   Download, 
   CheckCircle2, 
   Bookmark, 
-  ChevronRight,
   Briefcase,
-  AlertCircle
+  AlertCircle,
+  Sparkles,
+  Loader2
 } from 'lucide-react';
 import { getClassInfo } from '@/lib/classiConcorso';
 import { Interpello, UserLocation } from '@/types/interpello';
@@ -25,6 +26,8 @@ interface InterpelloCardProps {
   onOpenDetails: (interpello: Interpello) => void;
   onTogglePreferito: (id: number) => void;
   onToggleCandidato: (id: number) => void;
+  onScanAI?: (wpId: number) => void;
+  isScanningAI?: boolean;
   userLocation?: UserLocation | null;
 }
 
@@ -33,6 +36,8 @@ export function InterpelloCard({
   onOpenDetails,
   onTogglePreferito,
   onToggleCandidato,
+  onScanAI,
+  isScanningAI,
   userLocation,
 }: InterpelloCardProps) {
   const isCandidato = interpello.is_candidato !== undefined 
@@ -41,6 +46,13 @@ export function InterpelloCard({
   const isPreferito = interpello.is_preferito !== undefined 
     ? interpello.is_preferito 
     : interpello.status_candidatura === 'preferito';
+
+  const hasMissingInfo = 
+    !interpello.ore_settimanali || 
+    !interpello.ordine_scuola || 
+    interpello.ordine_scuola === 'Altro' || 
+    !interpello.periodo_desc ||
+    interpello.classi_concorso.length === 0;
 
   const distance =
     userLocation && interpello.latitude && interpello.longitude
@@ -63,7 +75,9 @@ export function InterpelloCard({
   const domandaAttachment = interpello.attachments.find((a) => a.is_domanda);
 
   return (
-    <Card className={`relative flex flex-col justify-between transition-all duration-150 hover:shadow-md ${
+    <Card 
+      onClick={() => onOpenDetails(interpello)}
+      className={`relative flex flex-col justify-between transition-all duration-150 cursor-pointer group hover:shadow-md ${
       isCandidato && isPreferito
         ? 'ring-1 ring-emerald-500/40 bg-emerald-500/[0.02]'
         : isCandidato 
@@ -216,12 +230,13 @@ export function InterpelloCard({
       <CardFooter className="px-4 sm:px-5 py-3 border-t border-border/80 bg-muted/20 flex items-center justify-between gap-2">
         
         {/* Allegati Rapidi */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
           {bandoAttachment && (
             <a
               href={bandoAttachment.url}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
               className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted border border-border/60 transition"
               title="Apri Bando PDF"
             >
@@ -234,6 +249,7 @@ export function InterpelloCard({
               href={domandaAttachment.url}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
               className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted border border-border/60 transition"
               title="Modello di candidatura"
             >
@@ -244,13 +260,37 @@ export function InterpelloCard({
         </div>
 
         {/* Azioni Utente */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
           
+          {/* Scansione Approfondita IA (se mancano informazioni) */}
+          {hasMissingInfo && onScanAI && (
+            <Button
+              variant="outline"
+              size="icon-sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                onScanAI(interpello.wp_id);
+              }}
+              disabled={isScanningAI}
+              className="h-8 w-8 rounded-md text-purple-700 dark:text-purple-300 border-purple-300/80 dark:border-purple-800/60 bg-purple-50/70 dark:bg-purple-950/30 hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors shadow-2xs shrink-0"
+              title="Scansione approfondita con IA (completa ore, ordine scuola, periodo dal bando)"
+            >
+              {isScanningAI ? (
+                <Loader2 className="w-4 h-4 animate-spin text-purple-600 dark:text-purple-400" />
+              ) : (
+                <Sparkles className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+              )}
+            </Button>
+          )}
+
           {/* Toggle Candidato */}
           <Button
             variant={isCandidato ? "secondary" : "ghost"}
             size="icon-sm"
-            onClick={() => onToggleCandidato(interpello.id)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleCandidato(interpello.id);
+            }}
             className={`h-8 w-8 rounded-md transition-colors ${
               isCandidato 
                 ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20' 
@@ -265,7 +305,10 @@ export function InterpelloCard({
           <Button
             variant={isPreferito ? "secondary" : "ghost"}
             size="icon-sm"
-            onClick={() => onTogglePreferito(interpello.id)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onTogglePreferito(interpello.id);
+            }}
             className={`h-8 w-8 rounded-md transition-colors ${
               isPreferito 
                 ? 'text-amber-600 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20' 
@@ -274,17 +317,6 @@ export function InterpelloCard({
             title={isPreferito ? 'Salvato tra i preferiti (clicca per rimuovere)' : 'Salva nei preferiti'}
           >
             <Bookmark className={`w-4 h-4 ${isPreferito ? 'fill-current' : ''}`} />
-          </Button>
-
-          {/* Dettagli */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onOpenDetails(interpello)}
-            className="h-8 px-2.5 text-xs font-medium gap-1 ml-1"
-          >
-            <span>Dettagli</span>
-            <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
           </Button>
 
         </div>

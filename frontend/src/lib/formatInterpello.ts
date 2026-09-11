@@ -12,6 +12,11 @@ export function formatInterpelloItem(row: any) {
   }
   if (!Array.isArray(item.attachments)) item.attachments = [];
 
+  if (typeof item.posti_dettaglio === 'string') {
+    try { item.posti_dettaglio = JSON.parse(item.posti_dettaglio); } catch (_) { item.posti_dettaglio = []; }
+  }
+  if (!Array.isArray(item.posti_dettaglio)) item.posti_dettaglio = [];
+
   // Calcolo scadenza e tempo residuo
   const now = new Date();
   const todayDate = now.toISOString().split('T')[0];

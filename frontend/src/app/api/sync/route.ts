@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
     // Invocazione sicura della Supabase Edge Function 'sync'
     if (supabaseUrl && supabaseKey) {
       try {
-        const edgeRes = await fetch(`${supabaseUrl}/functions/v1/sync`, {
+        const edgeRes = await fetch(`${supabaseUrl}/functions/v1/sync?per_page=100&pages=2`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

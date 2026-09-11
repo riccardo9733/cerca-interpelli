@@ -13,6 +13,7 @@ import {
   fetchClassi, 
   fetchOre,
   triggerManualSync,
+  scanInterpelloWithAI,
   FilterParams 
 } from '@/lib/api';
 import { 
@@ -39,6 +40,7 @@ export default function HomePage() {
   const [activeView, setActiveView] = useState<'list' | 'map'>('list');
   const [selectedInterpello, setSelectedInterpello] = useState<Interpello | null>(null);
   const [isDataModalOpen, setIsDataModalOpen] = useState(false);
+  const [scanningWpIds, setScanningWpIds] = useState<Set<number>>(new Set());
   
   // Posizione utente e filtro per distanza (Dexie / IndexedDB)
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
@@ -243,6 +245,63 @@ export default function HomePage() {
     }
   };
 
+  // Scansione approfondita con IA per singolo bando
+  const handleScanAI = async (wpId: number) => {
+    setScanningWpIds((prev) => new Set(prev).add(wpId));
+    try {
+      const result = await scanInterpelloWithAI(wpId);
+      if (result.success && result.updated_items && result.updated_items.length > 0) {
+        const userStatuses = await getAllUserStatuses();
+
+        const mergedNewItems = result.updated_items.map((item) => {
+          const userStat = userStatuses[item.id];
+          const isCandidato = !!userStat?.is_candidato;
+          const isPreferito = !!userStat?.is_favorite;
+          return {
+            ...item,
+            is_candidato: isCandidato,
+            is_preferito: isPreferito,
+            status_candidatura: (isCandidato ? 'candidato' : isPreferito ? 'preferito' : 'nessuno') as 'nessuno' | 'candidato' | 'preferito' | 'ignorato',
+            notes: userStat?.notes !== undefined ? userStat.notes : item.notes,
+            candidatura_date: userStat?.candidatura_date,
+          };
+        });
+
+        // Sostituisce le vecchie card di questo wpId mantenendo l'esatta posizione nell'elenco
+        setInterpelli((prev) => {
+          let inserted = false;
+          const result: Interpello[] = [];
+          for (const it of prev) {
+            if (it.wp_id === wpId) {
+              if (!inserted) {
+                result.push(...mergedNewItems);
+                inserted = true;
+              }
+            } else {
+              result.push(it);
+            }
+          }
+          return inserted ? result : [...mergedNewItems, ...prev];
+        });
+
+        // Se il modale è aperto sullo stesso bando, aggiorna i dati visualizzati
+        if (selectedInterpello && selectedInterpello.wp_id === wpId) {
+          const matchingUpdated = mergedNewItems.find(m => m.id === selectedInterpello.id) || mergedNewItems[0];
+          setSelectedInterpello(matchingUpdated);
+        }
+      }
+    } catch (err: any) {
+      console.error('Errore scansione IA:', err);
+      alert(`Errore scansione IA: ${err.message || String(err)}`);
+    } finally {
+      setScanningWpIds((prev) => {
+        const next = new Set(prev);
+        next.delete(wpId);
+        return next;
+      });
+    }
+  };
+
   // Calcolo interpelli visualizzati con supporto a filtri locali (status Dexie, distanza e ordinamento)
   const displayedInterpelli = useMemo(() => {
     let list = [...interpelli];
@@ -266,7 +325,7 @@ export default function HomePage() {
           item.latitude,
           item.longitude
         );
-        return d <= maxRadiusKm;
+        return d !== null && d <= maxRadiusKm;
       });
     }
 
@@ -286,12 +345,12 @@ export default function HomePage() {
     }
 
     return list;
-  }, [interpelli, filterByDistanceInList, userLocation, maxRadiusKm, filters.sort, filters.status]);
+  }, [interpelli, filters.status, filterByDistanceInList, userLocation, maxRadiusKm, filters.sort]);
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col font-sans selection:bg-muted selection:text-foreground">
+    <div className="min-h-screen flex flex-col bg-background text-foreground selection:bg-primary/20">
       
-      {/* Navbar Enterprise */}
+      {/* Header di Navigazione */}
       <Navbar
         stats={stats}
         activeView={activeView}
@@ -301,10 +360,10 @@ export default function HomePage() {
         onOpenDataManagement={() => setIsDataModalOpen(true)}
       />
 
-      {/* Contenuto Principale */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
+      {/* Main Content */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-6">
         
-        {/* Filtri e Ricerca */}
+        {/* Barra Filtri e Ricerca */}
         <FiltersBar
           filters={filters}
           onFilterChange={handleFilterChange}
@@ -314,29 +373,29 @@ export default function HomePage() {
           hasUserLocation={!!userLocation}
         />
 
-        {/* Gestione Errori */}
+        {/* Feedback di Errore se presente */}
         {error && (
-          <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive flex items-center justify-between gap-3 mb-6">
-            <div className="flex items-center gap-2 text-xs sm:text-sm">
-              <AlertCircle className="w-4 h-4 shrink-0" />
+          <div className="p-4 rounded-xl border border-destructive/20 bg-destructive/5 text-destructive text-sm flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4" />
               <span>{error}</span>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
+            <Button 
+              variant="outline" 
+              size="sm" 
               onClick={() => loadData(filters)}
-              className="text-xs h-7 border-destructive/30 hover:bg-destructive/10 text-destructive"
+              className="text-xs h-7 border-destructive/30 hover:bg-destructive/10"
             >
               Riprova
             </Button>
           </div>
         )}
 
-        {/* Vista Principale: Elenco vs Mappa */}
+        {/* Visualizzazione: Lista o Mappa */}
         {isLoading ? (
-          <div className="py-24 flex flex-col items-center justify-center space-y-3 text-muted-foreground">
-            <RefreshCw className="w-6 h-6 animate-spin text-foreground" />
-            <p className="text-xs font-medium">Aggiornamento elenco interpelli...</p>
+          <div className="py-20 flex flex-col items-center justify-center space-y-3">
+            <RefreshCw className="w-6 h-6 animate-spin text-muted-foreground" />
+            <p className="text-xs text-muted-foreground">Caricamento bandi in corso...</p>
           </div>
         ) : activeView === 'map' ? (
           <MapView
@@ -390,6 +449,8 @@ export default function HomePage() {
                 onOpenDetails={(item) => setSelectedInterpello(item)}
                 onTogglePreferito={handleTogglePreferito}
                 onToggleCandidato={handleToggleCandidato}
+                onScanAI={handleScanAI}
+                isScanningAI={scanningWpIds.has(item.wp_id)}
                 userLocation={userLocation}
               />
             ))}
@@ -405,6 +466,8 @@ export default function HomePage() {
         onTogglePreferito={handleTogglePreferito}
         onToggleCandidato={handleToggleCandidato}
         onSaveNotes={handleSaveNotes}
+        onScanAI={handleScanAI}
+        isScanningAI={selectedInterpello ? scanningWpIds.has(selectedInterpello.wp_id) : false}
         userLocation={userLocation}
       />
 
@@ -419,4 +482,3 @@ export default function HomePage() {
     </div>
   );
 }
-
