@@ -10,7 +10,7 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 interface PWAInstallPromptProps {
-  variant?: 'navbar' | 'banner';
+  variant?: 'navbar' | 'banner' | 'settings';
 }
 
 export function PWAInstallPrompt({ variant = 'navbar' }: PWAInstallPromptProps) {
@@ -72,11 +72,84 @@ export function PWAInstallPrompt({ variant = 'navbar' }: PWAInstallPromptProps) 
   };
 
   // Se l'app è già in modalità standalone, non mostra nulla
-  if (isStandalone) return null;
+  if (isStandalone && variant !== 'settings') return null;
 
   // Se non c'è il prompt e non è iOS, o se l'utente ha rifiutato in precedenza la banner
-  if (!deferredPrompt && !isIOS) return null;
+  if (!deferredPrompt && !isIOS && variant !== 'settings') return null;
   if (dismissed && variant === 'banner') return null;
+
+  if (variant === 'settings') {
+    return (
+      <>
+        {isStandalone ? (
+          <div className="flex items-center gap-2.5 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-2.5">
+            <Smartphone className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <p className="text-xs text-muted-foreground leading-snug">
+              App installata — stai usando la versione installata.
+            </p>
+          </div>
+        ) : (
+          <>
+            <p className="text-xs text-muted-foreground leading-snug">
+              Installa l&apos;app per un accesso rapido e la consultazione offline.
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleInstallClick}
+              disabled={!deferredPrompt && !isIOS}
+              className="w-full h-9 gap-1.5 text-xs font-medium"
+              title="Installa Cerca Interpelli come App"
+            >
+              <Smartphone className="w-3.5 h-3.5 text-primary shrink-0" />
+              {isIOS ? 'Come installare su iPhone / iPad' : 'Installa App'}
+            </Button>
+            {!deferredPrompt && !isIOS && (
+              <p className="text-[11px] text-muted-foreground leading-snug">
+                Installazione non disponibile su questo browser. Su Chrome (Android / desktop) apri il menu ⋮ e tocca &quot;Installa app&quot;.
+              </p>
+            )}
+          </>
+        )}
+
+        {/* Modal Istruzioni iOS */}
+        {showIOSModal && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200">
+            <div className="relative w-full max-w-sm bg-background border border-border rounded-xl p-5 shadow-lg">
+              <button
+                onClick={() => setShowIOSModal(false)}
+                className="absolute top-3 right-3 text-muted-foreground hover:text-foreground p-1 rounded-md"
+              >
+                <X className="w-4 h-4" />
+              </button>
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-bold text-sm">
+                  IP
+                </div>
+                <div>
+                  <h3 className="font-semibold text-sm">Installa su iPhone / iPad</h3>
+                  <p className="text-xs text-muted-foreground">Aggiungi alla schermata Home</p>
+                </div>
+              </div>
+              <ol className="text-xs space-y-2.5 my-4 text-muted-foreground list-decimal list-inside">
+                <li>Tocca il pulsante <span className="font-medium text-foreground inline-flex items-center gap-1 bg-muted px-1.5 py-0.5 rounded"><Share className="w-3 h-3" /> Condividi</span> in basso nel browser Safari.</li>
+                <li>Scorri verso il basso e seleziona <span className="font-medium text-foreground bg-muted px-1.5 py-0.5 rounded">Aggiungi alla schermata Home</span>.</li>
+                <li>Tocca <span className="font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded">Aggiungi</span> in alto a destra.</li>
+              </ol>
+              <Button
+                variant="default"
+                size="sm"
+                className="w-full text-xs h-8"
+                onClick={() => setShowIOSModal(false)}
+              >
+                Ho capito
+              </Button>
+            </div>
+          </div>
+        )}
+      </>
+    );
+  }
 
   if (variant === 'navbar') {
     return (

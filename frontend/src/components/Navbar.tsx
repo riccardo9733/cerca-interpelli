@@ -1,30 +1,24 @@
 'use client';
 
 import React from 'react';
-import { RefreshCw, Map, LayoutGrid, CheckCircle2, Bookmark, Flame, Database } from 'lucide-react';
+import { Map, LayoutGrid, CheckCircle2, Bookmark, Settings } from 'lucide-react';
 import { Stats } from '@/types/interpello';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
-import { ThemeToggle } from '@/components/ThemeToggle';
-import { PWAInstallPrompt } from '@/components/PWAInstallPrompt';
 
 interface NavbarProps {
   stats: Stats | null;
   activeView: 'list' | 'map';
   onViewChange: (view: 'list' | 'map') => void;
-  onRefresh: () => void;
-  isRefreshing: boolean;
-  onOpenDataManagement?: () => void;
+  onOpenSettings: () => void;
 }
 
 export function Navbar({
   stats,
   activeView,
   onViewChange,
-  onRefresh,
-  isRefreshing,
-  onOpenDataManagement,
+  onOpenSettings,
 }: NavbarProps) {
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border bg-background/95 backdrop-blur-md transition-colors">
@@ -97,7 +91,7 @@ export function Navbar({
             </div>
           )}
 
-          {/* Controlli Destra: Toggle Vista + Dati + Sincronizzazione */}
+          {/* Controlli Destra: Toggle Vista + Impostazioni */}
           <div className="flex items-center gap-2">
             
             {/* Toggle Lista / Mappa (Tabs Shadcn) */}
@@ -118,43 +112,62 @@ export function Navbar({
               </TabsList>
             </Tabs>
 
-            {/* Pulsante Gestione Dati Personali / Backup */}
-            {onOpenDataManagement && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onOpenDataManagement}
-                className="h-8 sm:h-9 px-2.5 sm:px-3 gap-1.5 text-xs font-normal"
-                title="I tuoi dati personali e backup (IndexedDB)"
-              >
-                <Database className="w-3.5 h-3.5 text-muted-foreground" />
-                <span className="hidden md:inline">Dati</span>
-              </Button>
-            )}
-
-            {/* Pulsante Installazione PWA */}
-            <PWAInstallPrompt variant="navbar" />
-
-            {/* Selettore Tema Chiaro / Scuro / Auto */}
-            <ThemeToggle />
-
-            {/* Pulsante Sincronizza */}
+            {/* Icona Impostazioni: apre il drawer Tema / Dati / Installazione App */}
             <Button
               variant="outline"
-              size="sm"
-              onClick={onRefresh}
-              disabled={isRefreshing}
-              className="h-8 sm:h-9 px-2.5 sm:px-3 gap-1.5 text-xs font-normal"
-              title={stats?.last_sync ? `Ultimo sync: ${stats.last_sync}` : 'Sincronizza ora'}
+              size="icon"
+              onClick={onOpenSettings}
+              className="h-8 w-8 sm:h-9 sm:w-9"
+              title="Impostazioni"
+              aria-label="Apri impostazioni"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-muted-foreground' : ''}`} />
-              <span className="hidden sm:inline">Sync</span>
+              <Settings className="w-3.5 h-3.5 text-muted-foreground" />
             </Button>
 
           </div>
 
         </div>
       </div>
+
+      {/* Statistiche compatte (solo sotto i 1024px: il ticker completo è nascosto) */}
+      {stats && (
+        <div className="lg:hidden border-t border-border/60">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6">
+            <div className="flex items-center justify-center flex-wrap gap-x-3 gap-y-0.5 py-1.5 text-[11px] text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <span className="text-foreground font-semibold font-mono">{stats.total_interpelli}</span>
+                <span>totali</span>
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                <span className="text-foreground font-semibold font-mono">{stats.active_interpelli}</span>
+                <span>attivi</span>
+              </span>
+              {stats.expiring_soon > 0 && (
+                <span className="flex items-center gap-1 text-amber-700 dark:text-amber-400 font-medium">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0 animate-pulse" />
+                  <span className="font-mono font-semibold">{stats.expiring_soon}</span>
+                  <span>in scadenza</span>
+                </span>
+              )}
+              {stats.candidati > 0 && (
+                <span className="flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                  <span className="text-foreground font-semibold font-mono">{stats.candidati}</span>
+                  <span>inviati</span>
+                </span>
+              )}
+              {stats.preferiti > 0 && (
+                <span className="flex items-center gap-1">
+                  <Bookmark className="w-3 h-3 text-amber-600 dark:text-amber-400 fill-current" />
+                  <span className="text-foreground font-semibold font-mono">{stats.preferiti}</span>
+                  <span>salvati</span>
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 }

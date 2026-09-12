@@ -125,14 +125,39 @@ CREATE POLICY "Accesso completo pubblico sync_state" ON sync_state FOR ALL USING
 -- CREATE POLICY "Accesso completo pubblico sync_state" ON sync_state FOR ALL USING (true) WITH CHECK (true);
 
 -- 5. Pianificazione Sincronizzazione Automatica su Supabase (pg_cron + pg_net)
--- Esegue la chiamata POST all'Edge Function `sync` ogni 10 min tra le 07:00 e le 21:00 italiane (05:00-19:00 UTC)
+-- Lun-Ven: ogni 10 min tra le 07:00 e le 21:00 italiane (05:00-19:00 UTC in ora estiva)
+-- Sab-Dom: alle 07:00, 13:00, 19:00 e 21:00 italiane (05,11,17,19 UTC in ora estiva)
 -- NOTA: sync-ai NON deve essere schedulata automaticamente — è invocata manualmente per singoli interpelli
 CREATE EXTENSION IF NOT EXISTS pg_cron WITH SCHEMA extensions;
 CREATE EXTENSION IF NOT EXISTS pg_net WITH SCHEMA extensions;
 
+-- Rimuove i vecchi job (se esistono) per rendere lo script ri-eseguibile
+SELECT cron.unschedule('sync-interpelli-10m') WHERE EXISTS (
+    SELECT 1 FROM cron.job WHERE jobname = 'sync-interpelli-10m'
+);
+SELECT cron.unschedule('sync-interpelli-weekday-10m') WHERE EXISTS (
+    SELECT 1 FROM cron.job WHERE jobname = 'sync-interpelli-weekday-10m'
+);
+SELECT cron.unschedule('sync-interpelli-weekend-6h') WHERE EXISTS (
+    SELECT 1 FROM cron.job WHERE jobname = 'sync-interpelli-weekend-6h'
+);
+
+-- Job feriale: Lun-Ven ogni 10 min
 SELECT cron.schedule(
-    'sync-interpelli-10m',
-    '*/10 5-19 * * *',
+    'sync-interpelli-weekday-10m',
+    '*/10 5-19 * * 1-5',
+    $$
+    SELECT net.http_post(
+        url := 'https://oysatbtuiyfupeuezzai.supabase.co/functions/v1/sync',
+        headers := '{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95c2F0YnR1aXlmdXBldWV6emFpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwNjE5MTAsImV4cCI6MjEwNDYzNzkxMH0.tt0CGIDxWXQwmdcEtEnTi3lZurmCgBB03QN-bXCr0Xs", "apikey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95c2F0YnR1aXlmdXBldWV6emFpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwNjE5MTAsImV4cCI6MjEwNDYzNzkxMH0.tt0CGIDxWXQwmdcEtEnTi3lZurmCgBB03QN-bXCr0Xs"}'::jsonb
+    );
+    $$
+);
+
+-- Job weekend: Sab-Dom alle 07:00, 13:00, 19:00 e 21:00 italiane
+SELECT cron.schedule(
+    'sync-interpelli-weekend-6h',
+    '0 5,11,17,19 * * 0,6',
     $$
     SELECT net.http_post(
         url := 'https://oysatbtuiyfupeuezzai.supabase.co/functions/v1/sync',

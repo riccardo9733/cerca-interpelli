@@ -1,17 +1,18 @@
 'use client';
 
 import React from 'react';
-import { 
-  MapPin, 
-  Calendar, 
-  FileText, 
-  Download, 
-  CheckCircle2, 
-  Bookmark, 
+import {
+  MapPin,
+  Calendar,
+  FileText,
+  Download,
+  CheckCircle2,
+  Bookmark,
   Briefcase,
   AlertCircle,
   Sparkles,
-  Loader2
+  Loader2,
+  Navigation
 } from 'lucide-react';
 import { getClassInfo } from '@/lib/classiConcorso';
 import { Interpello, UserLocation } from '@/types/interpello';
@@ -114,8 +115,8 @@ export function InterpelloCard({
           >
             {interpello.school_name || interpello.title}
           </h3>
-          {(interpello.school_city || distance !== null) && (
-            <div className="flex items-center justify-between gap-1 text-xs text-muted-foreground">
+          {(interpello.school_city || interpello.school_address) && (
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <div className="flex items-center gap-1 truncate min-w-0">
                 <MapPin className="w-3 h-3 text-muted-foreground/70 shrink-0" />
                 <span className="truncate">{interpello.school_city || 'Padova'}</span>
@@ -123,19 +124,14 @@ export function InterpelloCard({
                   <span className="truncate text-muted-foreground/70">· {interpello.school_address}</span>
                 )}
               </div>
-              {distance !== null && (
-                <span className="shrink-0 font-mono text-[10px] font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 px-1.5 py-0.5 rounded border border-blue-200/60 dark:border-blue-800/60">
-                  {formatDistance(distance)}
-                </span>
-              )}
             </div>
           )}
-        </div>
 
+        </div>
 
         {/* Badges: Codici Classe Concorso e Specifiche */}
         <div className="flex flex-wrap items-center gap-1.5 pt-1">
-          
+
           {/* Codice Concorso Monospace */}
           {interpello.classi_concorso.length > 0 ? (
             interpello.classi_concorso.map((cls) => {
@@ -209,6 +205,18 @@ export function InterpelloCard({
                 ?
               </span>
               <span>Data da verificare</span>
+            </Badge>
+          )}
+
+          {/* Distanza da casa (ultima tile) */}
+          {distance !== null && (
+            <Badge
+              variant="outline"
+              className="text-[11px] font-semibold font-mono text-blue-700 dark:text-blue-300 border-blue-300/70 dark:border-blue-800/70 bg-blue-50 dark:bg-blue-950/40 gap-1"
+              title="Distanza da casa tua"
+            >
+              <Navigation className="w-3 h-3 shrink-0" />
+              <span>{formatDistance(distance)}</span>
             </Badge>
           )}
 

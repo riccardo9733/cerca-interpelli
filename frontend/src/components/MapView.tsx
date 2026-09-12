@@ -1,23 +1,13 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { Interpello, UserLocation } from '@/types/interpello';
-import { geocodeAddress } from '@/lib/api';
+import { HomeAddressAutocomplete } from '@/components/HomeAddressAutocomplete';
 import { calculateDistanceKm, formatDistance } from '@/lib/distance';
-import { 
-  MapPin, 
-  Search, 
-  Navigation, 
-  X, 
-  RotateCcw, 
-  Sliders, 
-  Check, 
-  AlertCircle,
-  Loader2,
-  Home
+import {
+  MapPin,
+  Sliders,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useTheme } from '@/components/ThemeProvider';
 
@@ -51,99 +41,35 @@ export function MapView({
   const markersLayerRef = useRef<any>(null);
   const userLayerRef = useRef<any>(null);
 
-  const [addressInput, setAddressInput] = useState('');
-  const [isSearching, setIsSearching] = useState(false);
-  const [isLocating, setIsLocating] = useState(false);
-  const [geoError, setGeoError] = useState<string | null>(null);
-
-  // Calcolo delle distanze e filtraggio per raggio
-  const interpelliWithDistance = interpelli.map((item) => {
-    let distance: number | null = null;
-    if (userLocation && item.latitude && item.longitude) {
-      distance = calculateDistanceKm(
-        userLocation.latitude,
-        userLocation.longitude,
-        item.latitude,
-        item.longitude
-      );
-    }
-    return { ...item, distance };
-  });
-
-  const filteredInterpelli = interpelliWithDistance.filter((item) => {
-    if (!userLocation || maxRadiusKm === null) return true;
-    if (item.distance === null) return false;
-    return item.distance <= maxRadiusKm;
-  });
-
-  // Ricerca indirizzo con Geocoder
-  const handleSearchAddress = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!addressInput.trim()) return;
-
-    setIsSearching(true);
-    setGeoError(null);
-
-    try {
-      const res = await geocodeAddress(addressInput.trim());
-      if (res) {
-        onUserLocationChange({
-          address: res.address,
-          latitude: res.latitude,
-          longitude: res.longitude,
-        });
-        if (maxRadiusKm === null) {
-          onMaxRadiusKmChange(15); // default a 15km al primo inserimento
+  // Calcolo delle distanze e filtraggio per raggio (memoizzati:
+  // senza questo, ogni tasto premuto nella ricerca ricreava gli array
+  // e faceva ripartire l'effect della mappa)
+  const interpelliWithDistance = useMemo(
+    () =>
+      interpelli.map((item) => {
+        let distance: number | null = null;
+        if (userLocation && item.latitude && item.longitude) {
+          distance = calculateDistanceKm(
+            userLocation.latitude,
+            userLocation.longitude,
+            item.latitude,
+            item.longitude
+          );
         }
-      } else {
-        setGeoError('Indirizzo non trovato. Prova ad aggiungere la città o la provincia (es. "Padova", "Abano Terme").');
-      }
-    } catch (err: any) {
-      setGeoError(err.message || 'Errore durante la ricerca della posizione');
-    } finally {
-      setIsSearching(false);
-    }
-  };
+        return { ...item, distance };
+      }),
+    [interpelli, userLocation]
+  );
 
-  // Posizione GPS dal browser
-  const handleUseGPS = () => {
-    if (!('geolocation' in navigator)) {
-      setGeoError('La geolocalizzazione non è supportata dal tuo browser.');
-      return;
-    }
-
-    setIsLocating(true);
-    setGeoError(null);
-
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const lat = pos.coords.latitude;
-        const lon = pos.coords.longitude;
-
-        onUserLocationChange({
-          address: 'Posizione GPS rilevata',
-          latitude: lat,
-          longitude: lon,
-        });
-        if (maxRadiusKm === null) {
-          onMaxRadiusKmChange(15);
-        }
-        setIsLocating(false);
-      },
-      (err) => {
-        setIsLocating(false);
-        setGeoError(`Impossibile rilevare la posizione GPS (${err.message}). Inserisci manualmente un indirizzo.`);
-      },
-      { timeout: 10000, enableHighAccuracy: true }
-    );
-  };
-
-  const handleClearLocation = () => {
-    onUserLocationChange(null);
-    onMaxRadiusKmChange(null);
-    setAddressInput('');
-    setGeoError(null);
-  };
+  const filteredInterpelli = useMemo(
+    () =>
+      interpelliWithDistance.filter((item) => {
+        if (!userLocation || maxRadiusKm === null) return true;
+        if (item.distance === null) return false;
+        return item.distance <= maxRadiusKm;
+      }),
+    [interpelliWithDistance, userLocation, maxRadiusKm]
+  );
 
   // Inizializzazione e aggiornamento mappa Leaflet
   useEffect(() => {
@@ -398,88 +324,19 @@ export function MapView({
       {/* Barra Gestione Posizione & Filtro Raggio */}
       <div className="bg-card border border-border rounded-xl p-3 sm:p-4 shadow-xs space-y-3">
         
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-          
-          {/* Form Inserimento Indirizzo o GPS */}
-          <form onSubmit={handleSearchAddress} className="flex flex-1 items-center gap-2">
-            <div className="relative flex-1">
-              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                type="text"
-                value={addressInput}
-                onChange={(e) => setAddressInput(e.target.value)}
-                placeholder="Inserisci indirizzo o comune (es. Padova centro, Abano Terme, Cittadella)..."
-                className="pl-9 text-xs h-9"
-              />
-              {addressInput && (
-                <button
-                  type="button"
-                  onClick={() => setAddressInput('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
+        <div className="flex flex-col md:flex-row md:items-start justify-between gap-3">
 
-            <Button
-              type="submit"
-              size="sm"
-              disabled={isSearching || !addressInput.trim()}
-              className="h-9 text-xs gap-1.5 px-3 shrink-0"
-            >
-              {isSearching ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <Search className="w-3.5 h-3.5" />
-              )}
-              <span>Cerca</span>
-            </Button>
-
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleUseGPS}
-              disabled={isLocating}
-              title="Rileva posizione attuale dal dispositivo"
-              className="h-9 text-xs gap-1.5 px-3 shrink-0"
-            >
-              {isLocating ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600" />
-              ) : (
-                <Navigation className="w-3.5 h-3.5 text-blue-600" />
-              )}
-              <span className="hidden sm:inline">Usa GPS</span>
-            </Button>
-          </form>
-
-          {/* Posizione Attiva / Reset */}
-          {userLocation && (
-            <div className="flex items-center gap-2 shrink-0 bg-blue-50/60 dark:bg-blue-950/40 border border-blue-200/70 dark:border-blue-800/70 rounded-lg px-2.5 py-1.5 text-xs text-blue-900 dark:text-blue-200">
-              <Home className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-              <span className="font-medium truncate max-w-[200px] sm:max-w-[280px]" title={userLocation.address}>
-                {userLocation.address}
-              </span>
-              <button
-                onClick={handleClearLocation}
-                className="text-blue-600 hover:text-blue-800 dark:hover:text-blue-100 p-0.5 ml-1 transition"
-                title="Rimuovi indirizzo personale"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          )}
+          {/* Inserimento indirizzo di casa (stesso componente delle Impostazioni) */}
+          <div className="flex-1 min-w-0 md:max-w-xl">
+            <HomeAddressAutocomplete
+              userLocation={userLocation}
+              onUserLocationChange={onUserLocationChange}
+              maxRadiusKm={maxRadiusKm}
+              onMaxRadiusKmChange={onMaxRadiusKmChange}
+            />
+          </div>
 
         </div>
-
-        {/* Notifica Errore Geocoding */}
-        {geoError && (
-          <div className="flex items-center gap-2 text-xs text-destructive bg-destructive/10 border border-destructive/20 p-2.5 rounded-lg">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>{geoError}</span>
-          </div>
-        )}
 
         {/* Opzioni Raggio e Sincronizzazione Elenco (se posizione attiva) */}
         {userLocation && (

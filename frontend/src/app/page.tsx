@@ -5,14 +5,13 @@ import { Navbar } from '@/components/Navbar';
 import { FiltersBar } from '@/components/FiltersBar';
 import { InterpelloCard } from '@/components/InterpelloCard';
 import { InterpelloModal } from '@/components/InterpelloModal';
-import { DataManagementModal } from '@/components/DataManagementModal';
+import { SettingsDrawer } from '@/components/SettingsDrawer';
 import { MapView } from '@/components/MapView';
 import { 
   fetchInterpelli, 
   fetchStats, 
   fetchClassi, 
   fetchOre,
-  triggerManualSync,
   scanInterpelloWithAI,
   FilterParams 
 } from '@/lib/api';
@@ -39,7 +38,7 @@ export default function HomePage() {
   const [availableOre, setAvailableOre] = useState<number[]>([]);
   const [activeView, setActiveView] = useState<'list' | 'map'>('list');
   const [selectedInterpello, setSelectedInterpello] = useState<Interpello | null>(null);
-  const [isDataModalOpen, setIsDataModalOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [scanningWpIds, setScanningWpIds] = useState<Set<number>>(new Set());
   
   // Posizione utente e filtro per distanza (Dexie / IndexedDB)
@@ -58,7 +57,6 @@ export default function HomePage() {
   });
 
   const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Inizializzazione impostazioni salvate su IndexedDB (Dexie) al mount
@@ -169,18 +167,10 @@ export default function HomePage() {
     setFilters((prev) => ({ ...prev, ...newFilters }));
   };
 
-  // Sincronizzazione manuale
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    try {
-      await triggerManualSync();
-      await loadData(filters);
-    } catch (err: any) {
-      alert('Errore sincronizzazione: ' + err.message);
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
+  // Selezione bando dalla mappa (stabilizzato: evita rerender/refresh della mappa)
+  const handleSelectInterpello = useCallback((item: Interpello) => {
+    setSelectedInterpello(item);
+  }, []);
 
   // Toggle Preferito (non mutuamente esclusivo con candidatura inviata)
   const handleTogglePreferito = async (id: number) => {
@@ -355,9 +345,7 @@ export default function HomePage() {
         stats={stats}
         activeView={activeView}
         onViewChange={setActiveView}
-        onRefresh={handleRefresh}
-        isRefreshing={isRefreshing}
-        onOpenDataManagement={() => setIsDataModalOpen(true)}
+        onOpenSettings={() => setIsSettingsOpen(true)}
       />
 
       {/* Main Content */}
@@ -400,7 +388,7 @@ export default function HomePage() {
         ) : activeView === 'map' ? (
           <MapView
             interpelli={interpelli}
-            onSelectInterpello={(item) => setSelectedInterpello(item)}
+            onSelectInterpello={handleSelectInterpello}
             userLocation={userLocation}
             onUserLocationChange={handleUserLocationChange}
             maxRadiusKm={maxRadiusKm}
@@ -469,12 +457,15 @@ export default function HomePage() {
         userLocation={userLocation}
       />
 
-      {/* Modale Gestione Dati Personali IndexedDB (Dexie) */}
-      <DataManagementModal
-        isOpen={isDataModalOpen}
-        onClose={() => setIsDataModalOpen(false)}
+      {/* Drawer Impostazioni (Aspetto / Casa / I tuoi dati / Applicazione) */}
+      <SettingsDrawer
+        open={isSettingsOpen}
+        onOpenChange={setIsSettingsOpen}
         onDataChanged={() => loadData(filters)}
-        homeAddress={userLocation?.address}
+        userLocation={userLocation}
+        onUserLocationChange={handleUserLocationChange}
+        maxRadiusKm={maxRadiusKm}
+        onMaxRadiusKmChange={handleMaxRadiusKmChange}
       />
 
     </div>
