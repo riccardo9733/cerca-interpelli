@@ -3,7 +3,6 @@
 import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { cva, type VariantProps } from "class-variance-authority";
-import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const Sheet = DialogPrimitive.Root;
@@ -27,16 +26,16 @@ const SheetOverlay = React.forwardRef<
 SheetOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
 const sheetVariants = cva(
-  "fixed z-50 gap-4 bg-background p-6 shadow-xl transition ease-in-out duration-300 border-border",
+  "fixed z-50 bg-card shadow-2xl transition ease-in-out duration-300 flex flex-col",
   {
     variants: {
       side: {
-        top: "inset-x-0 top-0 border-b animate-in slide-in-from-top",
+        top: "inset-x-0 top-0 border-b border-border animate-in slide-in-from-top",
         bottom:
-          "inset-x-0 bottom-0 border-t rounded-t-2xl max-h-[92vh] overflow-y-auto animate-in slide-in-from-bottom",
-        left: "inset-y-0 left-0 h-full w-3/4 border-r animate-in slide-in-from-left sm:max-w-sm",
+          "inset-x-0 bottom-0 h-[80vh] rounded-t-2xl border-t border-border animate-in slide-in-from-bottom",
+        left: "inset-y-0 left-0 h-full w-3/4 border-r border-border animate-in slide-in-from-left sm:max-w-sm",
         right:
-          "inset-y-0 right-0 h-full w-full sm:max-w-xl border-l animate-in slide-in-from-right",
+          "top-3 bottom-3 right-3 w-full max-w-md rounded-2xl border border-border animate-in slide-in-from-right duration-300",
       },
     },
     defaultVariants: {
@@ -60,14 +59,7 @@ const SheetContent = React.forwardRef<
       className={cn(sheetVariants({ side }), className)}
       {...props}
     >
-      {side === "bottom" && (
-        <div className="mx-auto -mt-2 mb-4 h-1.5 w-12 rounded-full bg-muted-foreground/30" />
-      )}
       {children}
-      <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none cursor-pointer">
-        <X className="h-4 w-4" />
-        <span className="sr-only">Chiudi</span>
-      </DialogPrimitive.Close>
     </DialogPrimitive.Content>
   </SheetPortal>
 ));

@@ -466,8 +466,6 @@ export default function HomePage() {
         onTogglePreferito={handleTogglePreferito}
         onToggleCandidato={handleToggleCandidato}
         onSaveNotes={handleSaveNotes}
-        onScanAI={handleScanAI}
-        isScanningAI={selectedInterpello ? scanningWpIds.has(selectedInterpello.wp_id) : false}
         userLocation={userLocation}
       />
 
