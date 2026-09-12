@@ -2,7 +2,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import pdfParse from "npm:pdf-parse@1.1.1/lib/pdf-parse.js";
 import padovaSchoolsData from "./padova_schools.json" with { type: "json" };
 
-const WP_API_URL = "https://padova.istruzioneveneto.gov.it/wp-json/wp/v2/posts?categories=212&per_page=50";
+const WP_BASE_URL = "https://padova.istruzioneveneto.gov.it/wp-json/wp/v2/posts";
+const WP_CATEGORY = "212";
 
 interface Attachment {
   name: string;
@@ -653,16 +654,38 @@ Deno.serve(async (req) => {
   try {
     const reqUrl = new URL(req.url);
     const perPage = parseInt(reqUrl.searchParams.get("per_page") || reqUrl.searchParams.get("limit") || "100", 10);
-    const maxPages = parseInt(reqUrl.searchParams.get("pages") || "2", 10);
+    const maxPages = parseInt(reqUrl.searchParams.get("pages") || "5", 10);
     const force = reqUrl.searchParams.get("force") === "true";
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_ANON_KEY") ?? "";
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Legge la data dell'ultimo sync riuscito da sync_state
+    let lastSyncAt: string | null = null;
+    if (!force) {
+      const { data: stateRow } = await supabase
+        .from('sync_state')
+        .select('last_sync_at')
+        .eq('key', 'global')
+        .maybeSingle();
+      lastSyncAt = stateRow?.last_sync_at ?? null;
+    }
+
+    // Calcola timestamp "syncStartedAt" PRIMA di scaricare i post, così non perdiamo post
+    // pubblicati mentre gira il sync corrente
+    const syncStartedAt = new Date().toISOString();
+
     const posts: any[] = [];
     for (let pageNum = 1; pageNum <= maxPages; pageNum++) {
-      const wpApiUrl = `https://padova.istruzioneveneto.gov.it/wp-json/wp/v2/posts?categories=212&per_page=${perPage}&page=${pageNum}`;
+      // Se abbiamo una data di riferimento, chiediamo a WP solo i post modificati/pubblicati dopo
+      // Ordine: modified (decrescente) così i più recenti vengono prima e possiamo stoppare presto
+      let wpApiUrl = `${WP_BASE_URL}?categories=${WP_CATEGORY}&per_page=${perPage}&page=${pageNum}&orderby=modified&order=desc`;
+      if (lastSyncAt) {
+        // WP REST API: ?modified_after= filtra i post con modified > data
+        wpApiUrl += `&modified_after=${encodeURIComponent(lastSyncAt)}`;
+      }
+
       const res = await fetch(wpApiUrl, {
         headers: { "User-Agent": "CercaInterpelliPadova/1.0 (supabase-edge-function)" }
       });
@@ -675,17 +698,22 @@ Deno.serve(async (req) => {
       const pageData = await res.json();
       if (!Array.isArray(pageData) || pageData.length === 0) break;
       posts.push(...pageData);
+
+      // Se siamo in modalità incrementale e i risultati sono meno del perPage richiesto,
+      // non c'è una pagina successiva
+      if (pageData.length < perPage) break;
     }
     let itemsFound = posts.length;
     let itemsNew = 0;
     let itemsUpdated = 0;
+    let itemsSkipped = 0;
     let upsertErrors: any[] = [];
 
-    // Pre-carica in un'unica query tutti gli interpelli già presenti nel DB per verificare wp_modified
+    // Pre-carica in un'unica query tutti gli interpelli già presenti nel DB
     const wpIds = posts.map(p => p.id);
     const { data: existingRows } = await supabase
       .from('interpelli')
-      .select('wp_id, wp_modified, school_name, school_code, school_address, school_city, scadenza, scadenza_raw, status_candidatura, notes')
+      .select('wp_id, wp_modified, school_name, school_code, school_address, school_city, scadenza, scadenza_raw, status_candidatura, notes, ai_enhanced')
       .in('wp_id', wpIds);
 
     const existingMap = new Map<number, any>();
@@ -706,12 +734,22 @@ Deno.serve(async (req) => {
       const contentHtml = p.content?.rendered || '';
 
       const existing = existingMap.get(wpId);
-      const matchedSchool = resolveSchoolFromCatalog(title);
-      const schoolName = matchedSchool ? matchedSchool.name : extractCleanSchoolName(title);
+      const wpModifiedChanged = existing && !isSameDate(existing.wp_modified, wpModified);
 
-      if (!force && existing && isSameDate(existing.wp_modified, wpModified)) {
+      // Se il post non è cambiato su WordPress, skip (a meno di force)
+      if (!force && existing && !wpModifiedChanged) {
+        itemsSkipped++;
         continue;
       }
+
+      // Se il post è stato arricchito con AI ma su WP non è cambiato, mantieni i dati AI
+      // (questo caso è già coperto dal blocco sopra, ma lo documentiamo esplicitamente)
+      // Se invece wp_modified è cambiato su un record ai_enhanced, rigeneriamo e resettiamo ai_enhanced
+      const isAiEnhanced = existing?.ai_enhanced === true;
+      const willResetAi = isAiEnhanced && wpModifiedChanged;
+
+      const matchedSchool = resolveSchoolFromCatalog(title);
+      const schoolName = matchedSchool ? matchedSchool.name : extractCleanSchoolName(title);
 
       const attachments = parseAttachmentsFromHtml(contentHtml);
       const bandoAtt = attachments.find(a => a.is_bando) || attachments.find(a => a.url.toLowerCase().endsWith('.pdf')) || attachments[0];
@@ -825,6 +863,8 @@ Deno.serve(async (req) => {
           notes: pos.note || existing?.notes || null,
           attachments: attachments,
           content_raw: pdfText ? pdfText.slice(0, 3000) : null,
+          // Resetta ai_enhanced se wp_modified è cambiato (il contenuto WP è diverso)
+          ai_enhanced: willResetAi ? false : (isAiEnhanced ? true : false),
           updated_at: new Date().toISOString()
         };
 
@@ -864,6 +904,14 @@ Deno.serve(async (req) => {
       ? (itemsNew > 0 || itemsUpdated > 0 ? 'partial_error' : 'error')
       : 'success';
 
+    // Aggiorna sync_state con la data di inizio del sync corrente (non "now" per evitare race condition)
+    // Solo se il sync è completato senza errori critici
+    if (finalStatus === 'success' || finalStatus === 'partial_error') {
+      await supabase
+        .from('sync_state')
+        .upsert({ key: 'global', last_sync_at: syncStartedAt, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+    }
+
     await supabase.from('sync_logs').insert({
       status: finalStatus,
       items_found: itemsFound,
@@ -878,8 +926,10 @@ Deno.serve(async (req) => {
         items_found: itemsFound,
         items_new: itemsNew,
         items_updated: itemsUpdated,
+        items_skipped: itemsSkipped,
+        last_sync_at: lastSyncAt,
         errors: upsertErrors,
-        message: `Sincronizzazione completata su Supabase Edge Function con estrattore completo!`
+        message: `Sincronizzazione completata: ${itemsNew} nuovi, ${itemsUpdated} aggiornati, ${itemsSkipped} invariati (di cui ${posts.filter((_, i) => existingMap.get(posts[i]?.id)?.ai_enhanced).length} con AI preservato).`
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

@@ -896,6 +896,7 @@ Deno.serve(async (req) => {
         scadenza_raw: finalScadenzaRaw,
         attachments: attachments,
         content_raw: pdfText ? pdfText.slice(0, 3000) : contentHtml.slice(0, 3000),
+        ai_enhanced: true,
         updated_at: new Date().toISOString()
       };
 
