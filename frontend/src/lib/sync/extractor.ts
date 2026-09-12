@@ -185,13 +185,20 @@ export function extractClassiConcorso(text: string, title?: string | null): stri
 }
 
 export function extractScadenza(title: string, body: string): [string | null, string | null] {
+  // Pattern potenziati: coprono 'dell giorno', 'delle ore', 'della', varianti Nuvola/Madisoft, Argo
   const patterns = [
-    /(?:entro|scadenza|rispost[ae]\s+entro)\s+(?:e\s+non\s+oltre\s+)?(?:le\s+)?ore\s+(\d{1,2}[:.]\d{2})\s+(?:di\s+|del(?: giorno)?\s+)?(?:[a-zA-Zàèéìòù]+\s+)?(\d{1,2}[\/\-\.\s]\d{1,2}[\/\-\.\s]\d{2,4})/i,
-    /entro\s+(?:e\s+non\s+oltre\s+)?(?:il\s+)?(?:giorno\s+)?(?:[a-zA-Zàèéìòù]+\s+)?(\d{1,2}[\/\-\.\s]\d{1,2}[\/\-\.\s]\d{2,4})\s+(?:alle\s+|ore\s+)?(\d{1,2}[:.]\d{2})?/i,
-    /entro\s+(?:e\s+non\s+oltre\s+)?(?:le\s+)?ore\s+(\d{1,2}[:.]\d{2})\s+del(?: giorno)?\s+(\d{1,2}\s+[a-zA-Z]+\s+\d{4}|\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})/i,
-    /scadenza(?:\s+candidature)?:\s*(?:ore\s*(\d{1,2}[:.]\d{2}))?\s*(?:del\s+|il\s+)?(\d{1,2}[\/\-\.\s]\d{1,2}[\/\-\.\s]\d{2,4}|\d{1,2}\s+[a-zA-Z]+\s+\d{4})/i,
+    // "entro le ore 08:00 dell giorno 14/09/2026" | "entro le ore 09:00 di martedì 15/09/2026"
+    /(?:entro|scadenza|rispost[ae]\s+entro|comunicare\s+entro|disponibilit[àa]\s+entro)\s+(?:e\s+non\s+oltre\s+)?(?:le\s+)?ore\s+(\d{1,2}[:.]?\d{2})\s+(?:di\s+|del(?:l[aeo']?)?\s+|della\s+)?(?:giorno\s+)?(?:[a-zA-ZàèéìòùÀÈÉÌÒÙ]+\s+)?(\d{1,2}[\/\-\.\s]\d{1,2}[\/\-\.\s]\d{2,4}|\d{1,2}\s+[a-zA-Z]+\s+\d{4})/i,
+    // "entro il 16/09/2026 alle ore 12:00" | "entro il 16/09/2026"
+    /entro\s+(?:e\s+non\s+oltre\s+)?(?:il\s+)?(?:giorno\s+)?(?:[a-zA-ZàèéìòùÀÈÉÌÒÙ]+\s+)?(\d{1,2}[\/\-\.\s]\d{1,2}[\/\-\.\s]\d{2,4}|\d{1,2}\s+[a-zA-Z]+\s+\d{4})(?:\s+(?:alle\s+ore|alle|ore)\s+(\d{1,2}[:.]?\d{2}))?/i,
+    // "entro le ore 10:00 del giorno 20 settembre 2026"
+    /entro\s+(?:e\s+non\s+oltre\s+)?(?:le\s+)?ore\s+(\d{1,2}[:.]?\d{2})\s+del(?:l[aeo']?)?\s+(?:giorno\s+)?(\d{1,2}\s+[a-zA-Z]+\s+\d{4}|\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})/i,
+    // "scadenza candidature: ore 13.00 del 18/09/2026"
+    /scadenza(?:\s+candidature)?:\s*(?:ore\s*(\d{1,2}[:.]?\d{2}))?\s*(?:del(?:l[aeo']?)?\s+|il\s+|di\s+)?(?:giorno\s+)?(?:[a-zA-ZàèéìòùÀÈÉÌÒÙ]+\s+)?(\d{1,2}[\/\-\.\s]\d{1,2}[\/\-\.\s]\d{2,4}|\d{1,2}\s+[a-zA-Z]+\s+\d{4})/i,
+    // "termine presentazione entro" / "presentare entro" / "invio entro" / "candidarsi entro"
+    /(?:termine\s+presentazione|presentare\s+entro|invio\s+entro|candidarsi\s+entro)\s+(?:il\s+|ore\s+\d{1,2}[:.]?\d{2}\s+del(?:l[aeo']?)?\s+)?(\d{1,2}[\/\-\.\s]\d{1,2}[\/\-\.\s]\d{2,4}|\d{1,2}\s+[a-zA-Z]+\s+\d{4})/i,
+    // Generico: "entro il/le data"
     /entro\s+(?:e\s+non\s+oltre\s+)?(?:il\s+|le\s+)?(\d{1,2}\s+[a-zA-Z]+\s+\d{4}|\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})/i,
-    /(?:termine\s+presentazione|presentare\s+entro|invio\s+entro)\s+(?:il\s+|ore\s+\d{1,2}[:.]\d{2}\s+del\s+)?(\d{1,2}[\/\-\.\s]\d{1,2}[\/\-\.\s]\d{2,4}|\d{1,2}\s+[a-zA-Z]+\s+\d{4})/i,
   ];
 
   for (const pat of patterns) {
@@ -216,7 +223,6 @@ export function extractScadenza(title: string, body: string): [string | null, st
 
   return [null, null];
 }
-
 
 export function extractPeriodo(text: string): { periodo_desc: string | null; periodo_inizio: string | null; periodo_fine: string | null } {
   const res = { periodo_desc: null as string | null, periodo_inizio: null as string | null, periodo_fine: null as string | null };

@@ -321,13 +321,20 @@ function parseItalianDate(dateStr: string | null | undefined): Date | null {
 }
 
 function extractScadenza(title: string, body: string): [string | null, string | null] {
+  // Pattern potenziati: coprono 'dell giorno', 'delle ore', 'della', varianti Nuvola/Madisoft, Argo
   const patterns = [
-    /(?:entro|scadenza|rispost[ae]\s+entro)\s+(?:e\s+non\s+oltre\s+)?(?:le\s+)?ore\s+(\d{1,2}[:.]\d{2})\s+(?:di\s+|del(?: giorno)?\s+)?(?:[a-zA-Zàèéìòù]+\s+)?(\d{1,2}[\/\-\.\s]\d{1,2}[\/\-\.\s]\d{2,4})/i,
-    /entro\s+(?:e\s+non\s+oltre\s+)?(?:il\s+)?(?:giorno\s+)?(?:[a-zA-Zàèéìòù]+\s+)?(\d{1,2}[\/\-\.\s]\d{1,2}[\/\-\.\s]\d{2,4})\s+(?:alle\s+|ore\s+)?(\d{1,2}[:.]\d{2})?/i,
-    /entro\s+(?:e\s+non\s+oltre\s+)?(?:le\s+)?ore\s+(\d{1,2}[:.]\d{2})\s+del(?: giorno)?\s+(\d{1,2}\s+[a-zA-Z]+\s+\d{4}|\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})/i,
-    /scadenza(?:\s+candidature)?:\s*(?:ore\s*(\d{1,2}[:.]\d{2}))?\s*(?:del\s+|il\s+)?(\d{1,2}[\/\-\.\s]\d{1,2}[\/\-\.\s]\d{2,4}|\d{1,2}\s+[a-zA-Z]+\s+\d{4})/i,
+    // "entro le ore 08:00 dell giorno 14/09/2026" | "entro le ore 09:00 di martedì 15/09/2026"
+    /(?:entro|scadenza|rispost[ae]\s+entro|comunicare\s+entro|disponibilit[àa]\s+entro)\s+(?:e\s+non\s+oltre\s+)?(?:le\s+)?ore\s+(\d{1,2}[:.]\d{2})\s+(?:di\s+|del(?:l[aeo']?)?\s+|della\s+)?(?:giorno\s+)?(?:[a-zA-Zàèéìòù]+\s+)?(\d{1,2}[\/\-\.\s]\d{1,2}[\/\-\.\s]\d{2,4}|\d{1,2}\s+[a-zA-Z]+\s+\d{4})/i,
+    // "entro il 16/09/2026 alle ore 12:00" | "entro il 16/09/2026"
+    /entro\s+(?:e\s+non\s+oltre\s+)?(?:il\s+)?(?:giorno\s+)?(?:[a-zA-Zàèéìòù]+\s+)?(\d{1,2}[\/\-\.\s]\d{1,2}[\/\-\.\s]\d{2,4}|\d{1,2}\s+[a-zA-Z]+\s+\d{4})(?:\s+(?:alle\s+ore|alle|ore)\s+(\d{1,2}[:.]\d{2}))?/i,
+    // "entro le ore 10:00 del giorno 20 settembre 2026"
+    /entro\s+(?:e\s+non\s+oltre\s+)?(?:le\s+)?ore\s+(\d{1,2}[:.]\d{2})\s+del(?:l[aeo']?)?\s+(?:giorno\s+)?(\d{1,2}\s+[a-zA-Z]+\s+\d{4}|\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})/i,
+    // "scadenza candidature: ore 13.00 del 18/09/2026"
+    /scadenza(?:\s+candidature)?:\s*(?:ore\s*(\d{1,2}[:.]\d{2}))?\s*(?:del(?:l[aeo']?)?\s+|il\s+|di\s+)?(?:giorno\s+)?(?:[a-zA-Zàèéìòù]+\s+)?(\d{1,2}[\/\-\.\s]\d{1,2}[\/\-\.\s]\d{2,4}|\d{1,2}\s+[a-zA-Z]+\s+\d{4})/i,
+    // "termine presentazione entro" / "presentare entro" / "invio entro" / "candidarsi entro"
+    /(?:termine\s+presentazione|presentare\s+entro|invio\s+entro|candidarsi\s+entro)\s+(?:il\s+|ore\s+\d{1,2}[:.]\d{2}\s+del(?:l[aeo']?)?\s+)?(\d{1,2}[\/\-\.\s]\d{1,2}[\/\-\.\s]\d{2,4}|\d{1,2}\s+[a-zA-Z]+\s+\d{4})/i,
+    // Generico: "entro il/le data"
     /entro\s+(?:e\s+non\s+oltre\s+)?(?:il\s+|le\s+)?(\d{1,2}\s+[a-zA-Z]+\s+\d{4}|\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})/i,
-    /(?:termine\s+presentazione|presentare\s+entro|invio\s+entro)\s+(?:il\s+|ore\s+\d{1,2}[:.]\d{2}\s+del\s+)?(\d{1,2}[\/\-\.\s]\d{1,2}[\/\-\.\s]\d{2,4}|\d{1,2}\s+[a-zA-Z]+\s+\d{4})/i,
   ];
 
   for (const pat of patterns) {
@@ -365,8 +372,8 @@ Compila lo schema JSON con questi campi:
   - "periodo": durata supplenza (es. "Dal 16/09/2026 al 30/06/2027" o "Fino al 30/06/2027").
   - "note": eventuali note specifiche o requisiti (es. "LIS", plesso specifico).
 - "classi_concorso": Array di codici classe rilevati (es. ["A042"]).
-- "scadenza_raw": Testo esatto della scadenza (es. "entro le ore 09:00 di MARTEDI 15/09/2026"). IMPORTANTE: Cerca frasi come "entro le ore...", "entro il giorno...", "termine presentazione...", "scadenza...".
-- "scadenza": Data/ora di scadenza in formato ISO 8601 (es. "2026-09-15T07:00:00.000Z") o null se incerto.
+- "scadenza_raw": Testo esatto della scadenza presente nel bando. IMPORTANTE: cerca frasi come "entro le ore...", "entro il giorno...", "entro le ore X dell giorno...", "entro le ore X della giornata...", "termine presentazione...", "scadenza:", "candidatura entro...". La scadenza è spesso posta DOPO il link di candidatura (es. Nuvola/Argo) nello stesso paragrafo. Se trovi la data di scadenza estraila sempre, anche se compare dopo un URL.
+- "scadenza": Data/ora di scadenza in formato ISO 8601 UTC (es. "2026-09-14T06:00:00.000Z" per le 08:00 ora italiana CEST). Converti in UTC (sottrai 2h in estate, 1h in inverno). Null solo se assolutamente non trovata.
 - "periodo_desc": Sintesi durata supplenza (es. "Dal 16/09/2026 al 30/06/2027").
 - "periodo_inizio": Data inizio YYYY-MM-DD o null.
 - "periodo_fine": Data fine YYYY-MM-DD o null.
@@ -390,7 +397,7 @@ Compila lo schema JSON con questi campi:
 
   try {
     const fullText = `TITOLO: ${title}\n\nTESTO POST WP:\n${contentHtml.replace(/<[^>]+>/g, ' ')}\n\nTESTO BANDO PDF:\n${pdfText || '(Nessun testo digitale nel PDF: consulta il documento/immagine allegata o il titolo per estrarre le informazioni)'}`;
-    const userMessagesContent = `${extractionInstructions}\n\nTESTO DEL BANDO:\n${fullText.slice(0, 7000)}`;
+    const userMessagesContent = `${extractionInstructions}\n\nTESTO DEL BANDO:\n${fullText.slice(0, 9000)}`;
 
     const hasImages = Array.isArray(jpegImages) && jpegImages.length > 0;
     console.log(`[SYNC-AI] Chiamata OpenRouter con modello: ${modelToUse} (hasImages=${hasImages}, count=${jpegImages?.length || 0}, pdfUrl=${pdfUrl ? 'presente' : 'assente'})`);
