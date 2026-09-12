@@ -374,8 +374,44 @@ function TabContent({
               <div className="mt-2 pt-3 border-t border-border/60 space-y-2">
                 <span className="text-[11px] font-semibold text-foreground block">Prospetto Cattedre Disponibili:</span>
                 <div className="space-y-2">
-                  {interpello.posti_dettaglio.map((pos, idx) => (
-                    <div key={idx} className="p-2.5 rounded-md bg-card border border-border/80 flex flex-col gap-1 text-xs">
+                  {interpello.posti_dettaglio.map((pos, idx) => {
+                    const total = interpello.posti_dettaglio!.length;
+                    let isSelected = false;
+                    if (total > 1) {
+                      if (
+                        interpello.position_index &&
+                        interpello.position_index >= 1 &&
+                        interpello.position_index <= total
+                      ) {
+                        isSelected = idx === interpello.position_index - 1;
+                      } else {
+                        // Fallback: miglior match sui campi di sintesi
+                        let bestIdx = -1;
+                        let bestScore = 0;
+                        interpello.posti_dettaglio!.forEach((p, i) => {
+                          let s = 0;
+                          if (p.codice_classe && interpello.classi_concorso.includes(p.codice_classe)) s += 3;
+                          if (p.ore && interpello.ore_settimanali && p.ore === interpello.ore_settimanali) s += 2;
+                          if (p.periodo && interpello.periodo_desc && p.periodo === interpello.periodo_desc) s += 2;
+                          if (p.tipo_posto && interpello.tipo_posto && p.tipo_posto === interpello.tipo_posto) s += 1;
+                          if (p.ordine_scuola && interpello.ordine_scuola && p.ordine_scuola === interpello.ordine_scuola) s += 1;
+                          if (s > bestScore) {
+                            bestScore = s;
+                            bestIdx = i;
+                          }
+                        });
+                        isSelected = idx === bestIdx && bestScore > 0;
+                      }
+                    }
+                    return (
+                    <div
+                      key={idx}
+                      className={`p-2.5 rounded-md border flex flex-col gap-1 text-xs transition-colors ${
+                        isSelected
+                          ? 'bg-amber-500/[0.06] border-amber-500/50 ring-1 ring-amber-500/30'
+                          : 'bg-card border-border/80'
+                      }`}
+                    >
                       <div className="flex items-center justify-between gap-2 flex-wrap">
                         <div className="flex items-center gap-1.5 font-medium text-foreground">
                           {pos.codice_classe && <Badge variant="code" className="text-[11px] px-1.5 py-0.5">{pos.codice_classe}</Badge>}
@@ -383,6 +419,11 @@ function TabContent({
                           {pos.ordine_scuola && <span className="text-muted-foreground">· {pos.ordine_scuola}</span>}
                         </div>
                         <div className="flex items-center gap-1.5 font-mono text-[11px] shrink-0">
+                          {isSelected && (
+                            <span className="font-sans font-semibold text-[10px] text-amber-700 dark:text-amber-300 bg-amber-500/15 border border-amber-500/40 px-1.5 py-0.5 rounded">
+                              Questa cattedra
+                            </span>
+                          )}
                           {pos.posti && (
                             <span className="font-semibold text-foreground bg-muted px-1.5 py-0.5 rounded border border-border/50">
                               {pos.posti} {pos.posti === 1 ? 'posto' : 'posti'}
@@ -400,7 +441,8 @@ function TabContent({
                         </div>
                       )}
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
