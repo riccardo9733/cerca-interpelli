@@ -18,6 +18,7 @@ import {
   Info,
   Paperclip,
   NotebookPen,
+  CalendarDays,
 } from 'lucide-react';
 import { getClassInfo } from '@/lib/classiConcorso';
 import { Interpello, UserLocation } from '@/types/interpello';
@@ -293,7 +294,7 @@ function TabContent({
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-3">
             <div className="p-3.5 rounded-lg border border-border bg-muted/30 space-y-1.5">
               <div className="flex items-center gap-1.5 text-[11px] font-medium text-foreground">
                 <Clock className="w-3.5 h-3.5 text-muted-foreground" />
@@ -304,12 +305,6 @@ function TabContent({
                   ? new Date(interpello.scadenza).toLocaleString('it-IT', { dateStyle: 'medium', timeStyle: 'short' })
                   : interpello.scadenza_raw || 'Da verificare nel bando'}
               </p>
-              {interpello.periodo_desc && (
-                <div className="pt-1.5 border-t border-border/60 text-[11px]">
-                  <span className="text-muted-foreground">Periodo: </span>
-                  <span className="font-medium text-foreground">{interpello.periodo_desc}</span>
-                </div>
-              )}
             </div>
 
             <div className="p-3.5 rounded-lg border border-border bg-muted/30 space-y-1.5">
@@ -369,6 +364,12 @@ function TabContent({
                 </Badge>
               )}
             </div>
+            {interpello.periodo_desc && (
+              <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                <CalendarDays className="w-3.5 h-3.5 shrink-0" />
+                <span>Periodo: <span className="font-medium text-foreground">{interpello.periodo_desc}</span></span>
+              </div>
+            )}
             {interpello.posti_dettaglio && interpello.posti_dettaglio.length > 0 && (
               <div className="mt-2 pt-3 border-t border-border/60 space-y-2">
                 <span className="text-[11px] font-semibold text-foreground block">Prospetto Cattedre Disponibili:</span>
@@ -390,9 +391,11 @@ function TabContent({
                           {pos.ore && <span className="text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded">{pos.ore}</span>}
                         </div>
                       </div>
-                      {(pos.periodo || pos.note) && (
+                      {((pos.periodo || (interpello.posti_dettaglio!.length <= 1 && interpello.periodo_desc)) || pos.note) && (
                         <div className="text-[11px] text-muted-foreground flex flex-wrap items-center gap-2 pt-0.5">
-                          {pos.periodo && <span>📅 {pos.periodo}</span>}
+                          {(pos.periodo || (interpello.posti_dettaglio!.length <= 1 && interpello.periodo_desc)) && (
+                            <span>📅 {pos.periodo || interpello.periodo_desc}</span>
+                          )}
                           {pos.note && <span className="text-amber-600 dark:text-amber-400 italic">📌 {pos.note}</span>}
                         </div>
                       )}
