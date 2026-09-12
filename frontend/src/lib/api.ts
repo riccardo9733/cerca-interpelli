@@ -79,6 +79,60 @@ export async function updateInterpelloStatus(
   return res.json();
 }
 
+export type AdminInterpelloUpdate = Partial<
+  Pick<
+    Interpello,
+    | 'title'
+    | 'school_name'
+    | 'school_code'
+    | 'school_address'
+    | 'school_city'
+    | 'latitude'
+    | 'longitude'
+    | 'classi_concorso'
+    | 'ordine_scuola'
+    | 'tipo_posto'
+    | 'posti_disponibili'
+    | 'ore_settimanali'
+    | 'periodo_desc'
+    | 'periodo_inizio'
+    | 'periodo_fine'
+    | 'scadenza'
+    | 'scadenza_raw'
+    | 'email_candidatura'
+    | 'oggetto_email'
+    | 'link_candidatura'
+  >
+>;
+
+/** Modifica manuale admin — richiede sessione sbloccata (gate client-side). */
+export async function updateInterpelloAdmin(
+  id: number,
+  payload: AdminInterpelloUpdate
+): Promise<Interpello> {
+  const res = await fetch(`${API_BASE_URL}/api/interpelli/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.error || `Errore salvataggio: ${res.statusText}`);
+  }
+  return data as Interpello;
+}
+
+/** Eliminazione definitiva admin. */
+export async function deleteInterpelloAdmin(id: number): Promise<void> {
+  const res = await fetch(`${API_BASE_URL}/api/interpelli/${id}`, {
+    method: 'DELETE',
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data.success === false) {
+    throw new Error(data.error || `Errore eliminazione: ${res.statusText}`);
+  }
+}
+
 export async function triggerManualSync(): Promise<SyncResult> {
   const supabaseUrl = getValidUrl();
   const supabaseAnonKey = getValidAnonKey();

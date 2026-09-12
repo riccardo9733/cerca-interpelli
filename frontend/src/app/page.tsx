@@ -7,6 +7,9 @@ import { InterpelloCard } from '@/components/InterpelloCard';
 import { InterpelloModal } from '@/components/InterpelloModal';
 import { SettingsDrawer } from '@/components/SettingsDrawer';
 import { MapView } from '@/components/MapView';
+import { AdminGate } from '@/components/AdminGate';
+import { AdminEditDrawer } from '@/components/AdminEditDrawer';
+import { useIsAdmin, lockAdmin, isAdminUnlocked } from '@/lib/admin';
 import { 
   fetchInterpelli, 
   fetchStats, 
@@ -15,17 +18,20 @@ import {
   scanInterpelloWithAI,
   FilterParams 
 } from '@/lib/api';
-import { 
-  migrateLegacyLocalStorage, 
-  setUserSetting, 
+import {
+  migrateLegacyLocalStorage,
+  setUserSetting,
   getUserSetting,
-  removeUserSetting, 
-  getAllUserStatuses, 
+  removeUserSetting,
+  getAllUserStatuses,
   toggleUserFavorite,
   toggleUserCandidato,
   saveUserNotes,
-  getUserStatsCounts 
+  getUserStatsCounts,
+  saveDateOverride,
+  clearDateOverride,
 } from '@/lib/db';
+import { applyDateOverrideToItem, applySuggestedDatesToItem, formatInterpelloItem } from '@/lib/formatInterpello';
 import { Interpello, Stats, UserLocation } from '@/types/interpello';
 import { calculateDistanceKm } from '@/lib/distance';
 import { AlertCircle, RefreshCw, Inbox } from 'lucide-react';
@@ -39,7 +45,12 @@ export default function HomePage() {
   const [activeView, setActiveView] = useState<'list' | 'map'>('list');
   const [selectedInterpello, setSelectedInterpello] = useState<Interpello | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isAdminGateOpen, setIsAdminGateOpen] = useState(false);
+  const [editingInterpello, setEditingInterpello] =
+    useState<Interpello | null>(null);
+  const isAdmin = useIsAdmin();
   const [scanningWpIds, setScanningWpIds] = useState<Set<number>>(new Set());
+  const [fixingDateIds, setFixingDateIds] = useState<Set<number>>(new Set());
   
   // Posizione utente e filtro per distanza (Dexie / IndexedDB)
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
@@ -78,6 +89,13 @@ export default function HomePage() {
 
     initSettings();
   }, []);
+
+  // Uscita admin (8 click o logout): chiudi subito la drawer di modifica
+  useEffect(() => {
+    if (!isAdmin) {
+      setEditingInterpello(null);
+    }
+  }, [isAdmin]);
 
   // Handler per aggiornare e salvare le impostazioni in Dexie
   const handleUserLocationChange = async (loc: UserLocation | null) => {
@@ -130,7 +148,7 @@ export default function HomePage() {
         const userStat = userStatuses[item.id];
         const isCandidato = !!userStat?.is_candidato;
         const isPreferito = !!userStat?.is_favorite;
-        return {
+        const base = {
           ...item,
           is_candidato: isCandidato,
           is_preferito: isPreferito,
@@ -138,6 +156,15 @@ export default function HomePage() {
           notes: userStat?.notes !== undefined ? userStat.notes : item.notes,
           candidatura_date: userStat?.candidatura_date,
         };
+        // Override date corrette dall'utente (refuso scuola) — ricalcola countdown senza anomalia
+        if (userStat?.date_override) {
+          try {
+            return applyDateOverrideToItem(base, userStat.date_override);
+          } catch (_) {
+            return base;
+          }
+        }
+        return base;
       });
 
       setInterpelli(mergedItems);
@@ -235,8 +262,122 @@ export default function HomePage() {
     }
   };
 
-  // Scansione approfondita con IA per singolo bando
+  // Applica le date più probabili (refuso scuola) — solo admin
+  const handleApplySuggestedDates = async (interpello: Interpello) => {
+    if (!isAdminUnlocked()) return;
+    if (!interpello.has_suggested_dates && !interpello.has_date_anomaly) return;
+    setFixingDateIds((prev) => new Set(prev).add(interpello.id));
+    try {
+      const fixed = applySuggestedDatesToItem(interpello);
+      await saveDateOverride(interpello.id, {
+        scadenza: fixed.scadenza ?? interpello.scadenza,
+        periodo_inizio: (fixed as any).periodo_inizio ?? interpello.periodo_inizio,
+        periodo_fine: (fixed as any).periodo_fine ?? interpello.periodo_fine,
+        periodo_desc: (fixed as any).periodo_desc ?? interpello.periodo_desc,
+        original_scadenza: interpello.scadenza,
+        original_periodo_inizio: interpello.periodo_inizio,
+        original_periodo_fine: interpello.periodo_fine,
+        original_periodo_desc: interpello.periodo_desc,
+      });
+      const mergedFixed = {
+        ...fixed,
+        is_candidato: interpello.is_candidato,
+        is_preferito: interpello.is_preferito,
+        status_candidatura: interpello.status_candidatura,
+        notes: interpello.notes,
+        candidatura_date: interpello.candidatura_date,
+      } as Interpello;
+      setInterpelli((prev) => prev.map((it) => (it.id === interpello.id ? mergedFixed : it)));
+      if (selectedInterpello?.id === interpello.id) {
+        setSelectedInterpello(mergedFixed);
+      }
+    } catch (err) {
+      console.error('Errore applicazione date suggerite:', err);
+    } finally {
+      setFixingDateIds((prev) => {
+        const next = new Set(prev);
+        next.delete(interpello.id);
+        return next;
+      });
+    }
+  };
+
+  // Ripristina le date originali del bando — solo admin
+  const handleResetSuggestedDates = async (id: number) => {
+    if (!isAdminUnlocked()) return;
+    setFixingDateIds((prev) => new Set(prev).add(id));
+    try {
+      const userStatuses = await getAllUserStatuses();
+      const override = userStatuses[id]?.date_override;
+      await clearDateOverride(id);
+      setInterpelli((prev) =>
+        prev.map((it) => {
+          if (it.id !== id) return it;
+          if (override && (override.original_scadenza !== undefined || override.original_periodo_fine !== undefined)) {
+            const restored = {
+              ...it,
+              scadenza: override.original_scadenza ?? it.scadenza,
+              periodo_inizio: override.original_periodo_inizio ?? it.periodo_inizio,
+              periodo_fine: override.original_periodo_fine ?? it.periodo_fine,
+              periodo_desc: override.original_periodo_desc ?? it.periodo_desc,
+              date_fixed_by_user: false,
+            };
+            try {
+              return {
+                ...formatInterpelloItem(restored),
+                is_candidato: it.is_candidato,
+                is_preferito: it.is_preferito,
+                status_candidatura: it.status_candidatura,
+                notes: it.notes,
+                candidatura_date: it.candidatura_date,
+              } as Interpello;
+            } catch (_) {
+              return it;
+            }
+          }
+          return it;
+        })
+      );
+      if (selectedInterpello?.id === id) {
+        if (override && (override.original_scadenza !== undefined || override.original_periodo_fine !== undefined)) {
+          const restoredSelected = {
+            ...selectedInterpello,
+            scadenza: override.original_scadenza ?? selectedInterpello.scadenza,
+            periodo_inizio: override.original_periodo_inizio ?? selectedInterpello.periodo_inizio,
+            periodo_fine: override.original_periodo_fine ?? selectedInterpello.periodo_fine,
+            periodo_desc: override.original_periodo_desc ?? selectedInterpello.periodo_desc,
+            date_fixed_by_user: false,
+          };
+          try {
+            const reformatted = formatInterpelloItem(restoredSelected) as Interpello;
+            setSelectedInterpello({
+              ...reformatted,
+              is_candidato: selectedInterpello.is_candidato,
+              is_preferito: selectedInterpello.is_preferito,
+              status_candidatura: selectedInterpello.status_candidatura,
+              notes: selectedInterpello.notes,
+              candidatura_date: selectedInterpello.candidatura_date,
+            });
+          } catch (_) {}
+        } else {
+          // Fallback: ricarica dal backend se mancano gli originali
+          loadData(filters);
+        }
+      }
+    } catch (err) {
+      console.error('Errore ripristino date originali:', err);
+    } finally {
+      setFixingDateIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
+  };
+
+  // Scansione approfondita con IA per singolo bando — solo admin
   const handleScanAI = async (wpId: number) => {
+    if (!isAdminUnlocked()) return;
     setScanningWpIds((prev) => new Set(prev).add(wpId));
     try {
       const result = await scanInterpelloWithAI(wpId);
@@ -247,7 +388,7 @@ export default function HomePage() {
           const userStat = userStatuses[item.id];
           const isCandidato = !!userStat?.is_candidato;
           const isPreferito = !!userStat?.is_favorite;
-          return {
+          const base = {
             ...item,
             is_candidato: isCandidato,
             is_preferito: isPreferito,
@@ -255,6 +396,14 @@ export default function HomePage() {
             notes: userStat?.notes !== undefined ? userStat.notes : item.notes,
             candidatura_date: userStat?.candidatura_date,
           };
+          if (userStat?.date_override) {
+            try {
+              return applyDateOverrideToItem(base, userStat.date_override);
+            } catch (_) {
+              return base;
+            }
+          }
+          return base;
         });
 
         // Sostituisce le vecchie card di questo wpId mantenendo l'esatta posizione nell'elenco
@@ -292,9 +441,48 @@ export default function HomePage() {
     }
   };
 
+  // Apertura drawer modifica — solo admin
+  const handleEditInterpello = useCallback((item: Interpello) => {
+    if (!isAdminUnlocked()) return;
+    setEditingInterpello(item);
+  }, []);
+
+  // Salvataggio modifica admin: aggiorna lista + eventuale modale aperto
+  const handleAdminSaved = useCallback(
+    (updated: Interpello) => {
+      setInterpelli((prev) =>
+        prev.map((it) => (it.id === updated.id ? updated : it))
+      );
+      if (selectedInterpello?.id === updated.id) {
+        setSelectedInterpello(updated);
+      }
+      setEditingInterpello(updated);
+    },
+    [selectedInterpello]
+  );
+
+  // Eliminazione admin: rimuove da lista + chiude modale/drawer se puntano a lui
+  const handleAdminDeleted = useCallback(
+    (id: number) => {
+      setInterpelli((prev) => prev.filter((it) => it.id !== id));
+      if (selectedInterpello?.id === id) {
+        setSelectedInterpello(null);
+      }
+      setEditingInterpello(null);
+    },
+    [selectedInterpello]
+  );
+
   // Calcolo interpelli visualizzati con supporto a filtri locali (status Dexie, distanza e ordinamento)
   const displayedInterpelli = useMemo(() => {
     let list = [...interpelli];
+
+    // Il backend filtra gli scaduti senza conoscere gli override locali delle date:
+    // dopo "usa date più probabili" un bando può diventare scaduto in locale,
+    // quindi riapplichiamo il filtro qui per non mostrarlo tra gli attivi.
+    if (filters.only_active) {
+      list = list.filter((item) => !item.is_expired);
+    }
 
     // Filtro per status candidatura locale (se impostato su 'candidato' o 'preferito')
     if (filters.status && filters.status !== 'tutti') {
@@ -335,7 +523,7 @@ export default function HomePage() {
     }
 
     return list;
-  }, [interpelli, filters.status, filterByDistanceInList, userLocation, maxRadiusKm, filters.sort]);
+  }, [interpelli, filters.status, filters.only_active, filterByDistanceInList, userLocation, maxRadiusKm, filters.sort]);
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground selection:bg-primary/20">
@@ -346,6 +534,9 @@ export default function HomePage() {
         activeView={activeView}
         onViewChange={setActiveView}
         onOpenSettings={() => setIsSettingsOpen(true)}
+        isAdmin={isAdmin}
+        onSecretTrigger={() => setIsAdminGateOpen(true)}
+        onLockAdmin={() => lockAdmin()}
       />
 
       {/* Main Content */}
@@ -439,7 +630,12 @@ export default function HomePage() {
                 onToggleCandidato={handleToggleCandidato}
                 onScanAI={handleScanAI}
                 isScanningAI={scanningWpIds.has(item.wp_id)}
+                onApplySuggestedDates={handleApplySuggestedDates}
+                onResetSuggestedDates={handleResetSuggestedDates}
+                isFixingDates={fixingDateIds.has(item.id)}
                 userLocation={userLocation}
+                isAdmin={isAdmin}
+                onEdit={handleEditInterpello}
               />
             ))}
           </div>
@@ -454,7 +650,26 @@ export default function HomePage() {
         onTogglePreferito={handleTogglePreferito}
         onToggleCandidato={handleToggleCandidato}
         onSaveNotes={handleSaveNotes}
+        onApplySuggestedDates={handleApplySuggestedDates}
+        onResetSuggestedDates={handleResetSuggestedDates}
+        isFixingDates={selectedInterpello ? fixingDateIds.has(selectedInterpello.id) : false}
         userLocation={userLocation}
+        isAdmin={isAdmin}
+        onEdit={handleEditInterpello}
+      />
+
+      {/* Gate admin: 8 click sul brand + password */}
+      <AdminGate open={isAdminGateOpen} onOpenChange={setIsAdminGateOpen} />
+
+      {/* Drawer modifica admin */}
+      <AdminEditDrawer
+        interpello={editingInterpello}
+        open={!!editingInterpello}
+        onOpenChange={(open) => {
+          if (!open) setEditingInterpello(null);
+        }}
+        onSaved={handleAdminSaved}
+        onDeleted={handleAdminDeleted}
       />
 
       {/* Drawer Impostazioni (Aspetto / Casa / I tuoi dati / Applicazione) */}

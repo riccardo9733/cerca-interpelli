@@ -14,6 +14,21 @@ export interface InterpelloUserStatusRecord {
   notes?: string;
   candidatura_date?: string;
   updated_at: string;
+  // Override locale delle date quando l'utente applica le "date più probabili" (refuso scuola)
+  date_override?: DateOverride | null;
+}
+
+export interface DateOverride {
+  scadenza?: string | null;
+  periodo_inizio?: string | null;
+  periodo_fine?: string | null;
+  periodo_desc?: string | null;
+  // Copia delle date originali per ripristino istantaneo senza refetch
+  original_scadenza?: string | null;
+  original_periodo_inizio?: string | null;
+  original_periodo_fine?: string | null;
+  original_periodo_desc?: string | null;
+  applied_at: string;
 }
 
 export interface UserInterpelloData {
@@ -22,6 +37,7 @@ export interface UserInterpelloData {
   notes?: string;
   candidatura_date?: string;
   status: 'nessuno' | 'candidato' | 'preferito' | 'ignorato';
+  date_override?: DateOverride | null;
 }
 
 export class CercaInterpelliDatabase extends Dexie {
@@ -91,6 +107,7 @@ export async function getAllUserStatuses(): Promise<Record<number, UserInterpell
         notes: item.notes,
         candidatura_date: item.candidatura_date,
         status: is_candidato ? 'candidato' : is_favorite ? 'preferito' : 'nessuno',
+        date_override: item.date_override ?? null,
       };
     }
     return map;
@@ -108,7 +125,7 @@ export async function toggleUserFavorite(interpelloId: number): Promise<boolean>
     const currentCand = existing?.is_candidato !== undefined ? existing.is_candidato : existing?.status === 'candidato';
     const nextFav = !currentFav;
 
-    if (!nextFav && !currentCand && (!existing?.notes || existing.notes.trim() === '')) {
+    if (!nextFav && !currentCand && (!existing?.notes || existing.notes.trim() === '') && !existing?.date_override) {
       await db.userStatuses.delete(interpelloId);
     } else {
       await db.userStatuses.put({
@@ -118,6 +135,7 @@ export async function toggleUserFavorite(interpelloId: number): Promise<boolean>
         status: nextFav ? 'preferito' : currentCand ? 'candidato' : 'nessuno',
         notes: existing?.notes,
         candidatura_date: existing?.candidatura_date,
+        date_override: existing?.date_override ?? null,
         updated_at: new Date().toISOString(),
       });
     }
@@ -136,7 +154,7 @@ export async function toggleUserCandidato(interpelloId: number): Promise<boolean
     const currentCand = existing?.is_candidato !== undefined ? existing.is_candidato : existing?.status === 'candidato';
     const nextCand = !currentCand;
 
-    if (!nextCand && !currentFav && (!existing?.notes || existing.notes.trim() === '')) {
+    if (!nextCand && !currentFav && (!existing?.notes || existing.notes.trim() === '') && !existing?.date_override) {
       await db.userStatuses.delete(interpelloId);
     } else {
       await db.userStatuses.put({
@@ -146,6 +164,7 @@ export async function toggleUserCandidato(interpelloId: number): Promise<boolean
         status: nextCand ? 'candidato' : currentFav ? 'preferito' : 'nessuno',
         notes: existing?.notes,
         candidatura_date: nextCand ? (existing?.candidatura_date || new Date().toISOString()) : undefined,
+        date_override: existing?.date_override ?? null,
         updated_at: new Date().toISOString(),
       });
     }
@@ -163,7 +182,7 @@ export async function saveUserNotes(interpelloId: number, notes: string): Promis
     const currentFav = existing?.is_favorite !== undefined ? existing.is_favorite : existing?.status === 'preferito';
     const currentCand = existing?.is_candidato !== undefined ? existing.is_candidato : existing?.status === 'candidato';
 
-    if (!currentFav && !currentCand && (!notes || notes.trim() === '')) {
+    if (!currentFav && !currentCand && (!notes || notes.trim() === '') && !existing?.date_override) {
       await db.userStatuses.delete(interpelloId);
     } else {
       await db.userStatuses.put({
@@ -173,11 +192,62 @@ export async function saveUserNotes(interpelloId: number, notes: string): Promis
         status: currentCand ? 'candidato' : currentFav ? 'preferito' : 'nessuno',
         notes,
         candidatura_date: existing?.candidatura_date,
+        date_override: existing?.date_override ?? null,
         updated_at: new Date().toISOString(),
       });
     }
   } catch (err) {
     console.error(`Errore salvataggio note interpello #${interpelloId}:`, err);
+  }
+}
+
+// --- Override date (refuso scuola: "usa date più probabili") ---
+
+export async function saveDateOverride(interpelloId: number, override: Omit<DateOverride, 'applied_at'>): Promise<void> {
+  if (!db) return;
+  try {
+    const existing = await db.userStatuses.get(interpelloId);
+    const currentFav = existing?.is_favorite !== undefined ? existing.is_favorite : existing?.status === 'preferito';
+    const currentCand = existing?.is_candidato !== undefined ? existing.is_candidato : existing?.status === 'candidato';
+    await db.userStatuses.put({
+      interpelloId,
+      is_favorite: !!currentFav,
+      is_candidato: !!currentCand,
+      status: currentCand ? 'candidato' : currentFav ? 'preferito' : 'nessuno',
+      notes: existing?.notes,
+      candidatura_date: existing?.candidatura_date,
+      date_override: { ...override, applied_at: new Date().toISOString() },
+      updated_at: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.error(`Errore salvataggio override date interpello #${interpelloId}:`, err);
+  }
+}
+
+export async function clearDateOverride(interpelloId: number): Promise<void> {
+  if (!db) return;
+  try {
+    const existing = await db.userStatuses.get(interpelloId);
+    if (!existing?.date_override) return;
+    const currentFav = existing?.is_favorite !== undefined ? existing.is_favorite : existing?.status === 'preferito';
+    const currentCand = existing?.is_candidato !== undefined ? existing.is_candidato : existing?.status === 'candidato';
+    const hasOther = !!currentFav || !!currentCand || (existing?.notes && existing.notes.trim() !== '');
+    if (!hasOther) {
+      await db.userStatuses.delete(interpelloId);
+    } else {
+      await db.userStatuses.put({
+        interpelloId,
+        is_favorite: !!currentFav,
+        is_candidato: !!currentCand,
+        status: currentCand ? 'candidato' : currentFav ? 'preferito' : 'nessuno',
+        notes: existing?.notes,
+        candidatura_date: existing?.candidatura_date,
+        date_override: null,
+        updated_at: new Date().toISOString(),
+      });
+    }
+  } catch (err) {
+    console.error(`Errore rimozione override date interpello #${interpelloId}:`, err);
   }
 }
 

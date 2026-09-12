@@ -1,24 +1,27 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { 
-  X, 
-  MapPin, 
-  Clock, 
-  Mail, 
-  FileText, 
-  Download, 
-  ExternalLink, 
-  Copy, 
-  Check, 
-  Bookmark, 
-  CheckCircle2, 
+import {
+  X,
+  MapPin,
+  Clock,
+  Mail,
+  FileText,
+  Download,
+  ExternalLink,
+  Copy,
+  Check,
+  Bookmark,
+  CheckCircle2,
   Send,
   Landmark,
   Info,
   Paperclip,
   NotebookPen,
   CalendarDays,
+  CalendarClock,
+  Loader2,
+  PencilLine,
 } from 'lucide-react';
 import { getClassInfo } from '@/lib/classiConcorso';
 import { Interpello, UserLocation } from '@/types/interpello';
@@ -39,7 +42,12 @@ interface InterpelloModalProps {
   onTogglePreferito: (id: number) => void;
   onToggleCandidato: (id: number) => void;
   onSaveNotes: (id: number, notes: string) => Promise<void> | void;
+  onApplySuggestedDates?: (interpello: Interpello) => void;
+  onResetSuggestedDates?: (id: number) => void;
+  isFixingDates?: boolean;
   userLocation?: UserLocation | null;
+  isAdmin?: boolean;
+  onEdit?: (interpello: Interpello) => void;
 }
 
 type TabId = 'info' | 'candidatura' | 'allegati' | 'note';
@@ -57,7 +65,12 @@ export function InterpelloModal({
   onTogglePreferito,
   onToggleCandidato,
   onSaveNotes,
+  onApplySuggestedDates,
+  onResetSuggestedDates,
+  isFixingDates,
   userLocation,
+  isAdmin = false,
+  onEdit,
 }: InterpelloModalProps) {
 
   const isMobile = useIsMobile();
@@ -141,6 +154,8 @@ export function InterpelloModal({
                   scadenzaRaw={interpello.scadenza_raw}
                   timeRemainingSeconds={interpello.time_remaining_seconds}
                   isExpired={interpello.is_expired}
+                  hasDateAnomaly={interpello.has_date_anomaly}
+                  dateAnomalyDesc={interpello.date_anomaly_desc}
                 />
                 <span className="text-[11px] font-mono text-muted-foreground">
                   Pubblicato {new Date(interpello.wp_date).toLocaleDateString('it-IT')}
@@ -160,6 +175,19 @@ export function InterpelloModal({
               </button>
             </SheetClose>
           </div>
+          {isAdmin && onEdit && interpello && (
+            <div className="mb-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onEdit(interpello)}
+                className="h-8 gap-1.5 text-xs text-emerald-700 dark:text-emerald-300 border-emerald-300/80 dark:border-emerald-800/60 bg-emerald-50/70 dark:bg-emerald-950/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/40"
+              >
+                <PencilLine className="w-3.5 h-3.5" />
+                <span>Modifica (admin)</span>
+              </Button>
+            </div>
+          )}
           <TabBar
             activeTab={activeTab}
             setActiveTab={setActiveTab}
@@ -186,6 +214,10 @@ export function InterpelloModal({
             govPortalUrl={govPortalUrl}
             hasAttachments={hasAttachments}
             userLocation={userLocation}
+            onApplySuggestedDates={onApplySuggestedDates}
+            onResetSuggestedDates={onResetSuggestedDates}
+            isFixingDates={isFixingDates}
+            isAdmin={isAdmin}
           />
         </div>
 
@@ -259,6 +291,10 @@ interface TabContentProps {
   govPortalUrl: string;
   hasAttachments: boolean;
   userLocation?: UserLocation | null;
+  onApplySuggestedDates?: (interpello: Interpello) => void;
+  onResetSuggestedDates?: (id: number) => void;
+  isFixingDates?: boolean;
+  isAdmin?: boolean;
 }
 
 function TabContent({
@@ -276,6 +312,10 @@ function TabContent({
   govPortalUrl,
   hasAttachments,
   userLocation,
+  onApplySuggestedDates,
+  onResetSuggestedDates,
+  isFixingDates,
+  isAdmin = false,
 }: TabContentProps) {
   return (
     <>
@@ -285,11 +325,62 @@ function TabContent({
           {interpello.has_date_anomaly && (
             <div className="p-3.5 rounded-lg bg-amber-500/10 border border-amber-500/40 text-amber-950 dark:text-amber-200 flex items-start gap-2.5">
               <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-amber-500 text-white font-bold text-xs shrink-0 mt-0.5 shadow-xs">?</span>
-              <div className="space-y-0.5">
+              <div className="space-y-2 flex-1 min-w-0">
                 <span className="font-semibold block text-xs">Bando Attivo · Verifica Date (Refuso Scuola)</span>
                 <p className="text-[11px] leading-relaxed text-amber-900/90 dark:text-amber-200/90">
                   {interpello.date_anomaly_desc || "La data di pubblicazione è più recente della data indicata nel testo dal bando. L'avviso è recente ed è da considerarsi ATTIVO, ma si consiglia di consultare il bando per chiarire le date effettive."}
                 </p>
+                {isAdmin && interpello.has_suggested_dates && onApplySuggestedDates && (
+                  <div className="pt-1 space-y-1.5">
+                    {interpello.suggested_dates_label && (
+                      <p className="text-[11px] font-mono font-medium text-amber-900 dark:text-amber-200">
+                        Date più probabili: {interpello.suggested_dates_label}
+                      </p>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onApplySuggestedDates(interpello)}
+                      disabled={isFixingDates}
+                      className="h-8 gap-1.5 text-xs text-amber-800 dark:text-amber-200 border-amber-400/70 dark:border-amber-700/60 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/50 shadow-2xs"
+                      title={`Applica le date più probabili${interpello.suggested_dates_label ? `: ${interpello.suggested_dates_label}` : ''}`}
+                    >
+                      {isFixingDates ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <CalendarClock className="w-3.5 h-3.5" />
+                      )}
+                      <span>Usa date più probabili</span>
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          {interpello.date_fixed_by_user && isAdmin && (
+            <div className="p-3.5 rounded-lg bg-emerald-500/10 border border-emerald-500/40 text-emerald-950 dark:text-emerald-200 flex items-start gap-2.5">
+              <CalendarClock className="w-5 h-5 shrink-0 mt-0.5" />
+              <div className="space-y-1.5 flex-1 min-w-0">
+                <span className="font-semibold block text-xs">Date corrette applicate</span>
+                <p className="text-[11px] leading-relaxed opacity-90">
+                  Stai usando le date più probabili (anno normalizzato). Il conto alla rovescia ora è calcolato su queste date.
+                </p>
+              </div>
+            </div>
+          )}
+          {interpello.has_date_inconsistency && (
+            <div className="p-3.5 rounded-lg bg-amber-500/10 border border-amber-500/40 text-amber-950 dark:text-amber-200 flex items-start gap-2.5">
+              <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-amber-500 text-white font-bold text-xs shrink-0 mt-0.5 shadow-xs">?</span>
+              <div className="space-y-0.5">
+                <span className="font-semibold block text-xs">Date incoerenti da verificare</span>
+                <p className="text-[11px] leading-relaxed text-amber-900/90 dark:text-amber-200/90">
+                  {interpello.date_inconsistency_desc || "La scadenza candidature è successiva all'inizio del servizio indicato: verifica il bando."}
+                </p>
+                {isAdmin && (
+                  <p className="text-[11px] leading-relaxed text-amber-900/90 dark:text-amber-200/90">
+                    Chiudi il dettaglio e usa il pulsante ✨ sulla card per revisionare le date con la scansione IA.
+                  </p>
+                )}
               </div>
             </div>
           )}

@@ -63,6 +63,17 @@ export interface Interpello {
   time_remaining_seconds?: number | null;
   has_date_anomaly?: boolean;
   date_anomaly_desc?: string | null;
+  // Date più probabili suggerite quando la scuola commette un refuso (bottone "usa date corrette")
+  suggested_scadenza?: string | null;
+  suggested_periodo_inizio?: string | null;
+  suggested_periodo_fine?: string | null;
+  suggested_periodo_desc?: string | null;
+  has_suggested_dates?: boolean;
+  suggested_dates_label?: string | null;
+  date_fixed_by_user?: boolean;
+  // Incoerenza strutturale: scadenza candidature successiva all'inizio del servizio
+  has_date_inconsistency?: boolean;
+  date_inconsistency_desc?: string | null;
 }
 
 export interface Stats {
