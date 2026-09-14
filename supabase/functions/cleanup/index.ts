@@ -3,7 +3,17 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+};
+
 Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_ANON_KEY") ?? "";
@@ -11,59 +21,57 @@ Deno.serve(async (req) => {
 
     const now = new Date();
     const FORTY_EIGHT_HOURS_MS = 48 * 3600 * 1000;
+    const NINE_DAYS_MS = 9 * 86400 * 1000; // 7 giorni validità di default + 48h
 
-    const { data: rows, error } = await supabase.from('interpelli').select('id, wp_date, scadenza');
-    if (error) throw error;
+    const cutoffScadenza = new Date(now.getTime() - FORTY_EIGHT_HOURS_MS).toISOString();
+    const cutoffWpDate = new Date(now.getTime() - NINE_DAYS_MS).toISOString();
 
-    const idsToDelete: number[] = [];
+    // 1. Elimina interpelli con data di scadenza esplicita scaduta da oltre 48 ore
+    const { data: del1, error: err1 } = await supabase
+      .from('interpelli')
+      .delete()
+      .not('scadenza', 'is', null)
+      .lt('scadenza', cutoffScadenza)
+      .select('id');
 
-    (rows || []).forEach(row => {
-      let isExpired = false;
-      let expiredForMs = 0;
-
-      if (row.scadenza) {
-        const expDt = new Date(row.scadenza);
-        if (!isNaN(expDt.getTime())) {
-          expiredForMs = now.getTime() - expDt.getTime();
-          isExpired = expiredForMs > 0;
-        }
-      } else if (row.wp_date) {
-        const wpDt = new Date(row.wp_date);
-        if (!isNaN(wpDt.getTime())) {
-          expiredForMs = now.getTime() - (wpDt.getTime() + 7 * 86400 * 1000);
-          isExpired = expiredForMs > 0;
-        }
-      }
-
-      if (isExpired && expiredForMs >= FORTY_EIGHT_HOURS_MS) {
-        idsToDelete.push(row.id);
-      }
-    });
-
-    let deletedCount = 0;
-    if (idsToDelete.length > 0) {
-      const { error: delErr } = await supabase
-        .from('interpelli')
-        .delete()
-        .in('id', idsToDelete);
-
-      if (delErr) throw delErr;
-      deletedCount = idsToDelete.length;
+    if (err1) {
+      console.error("Errore eliminazione scadenza esplicita:", err1);
+      throw err1;
     }
+
+    // 2. Elimina interpelli senza scadenza esplicita pubblicati da oltre 9 giorni (>7gg + 48h)
+    const { data: del2, error: err2 } = await supabase
+      .from('interpelli')
+      .delete()
+      .is('scadenza', null)
+      .lt('wp_date', cutoffWpDate)
+      .select('id');
+
+    if (err2) {
+      console.error("Errore eliminazione fallback wp_date:", err2);
+      throw err2;
+    }
+
+    const deletedIds = [
+      ...(del1 || []).map((r: { id: number }) => r.id),
+      ...(del2 || []).map((r: { id: number }) => r.id),
+    ];
+    const deletedCount = deletedIds.length;
 
     return new Response(
       JSON.stringify({
         success: true,
         deleted_count: deletedCount,
-        deleted_ids: idsToDelete,
+        deleted_ids: deletedIds,
         message: `Pulizia completata da Supabase Edge Function: eliminati ${deletedCount} record.`
       }),
-      { headers: { "Content-Type": "application/json" } }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err: any) {
+    console.error("Errore Edge Function cleanup:", err);
     return new Response(
       JSON.stringify({ success: false, error: err.message || String(err) }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });

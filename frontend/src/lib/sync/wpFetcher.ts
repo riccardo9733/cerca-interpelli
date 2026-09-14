@@ -94,7 +94,7 @@ export async function syncInterpelli() {
 
       const existing = existingMap.get(wpId);
 
-      if (existing && isSameDate(existing.wp_modified, wpModified)) {
+      if (existing) {
         continue;
       }
 
@@ -129,6 +129,7 @@ export async function syncInterpelli() {
       // 5. Upsert su Supabase
       const record: Record<string, any> = {
         wp_id: wpId,
+        item_key: `${wpId}-1`,
         title,
         slug,
         wp_date: wpDate,
@@ -162,7 +163,7 @@ export async function syncInterpelli() {
 
       const { error: upsertErr } = await supabase
         .from('interpelli')
-        .upsert(record, { onConflict: 'wp_id' });
+        .upsert(record, { onConflict: 'item_key' });
 
       if (upsertErr) {
         console.error(`Errore salvataggio interpello ${wpId}:`, upsertErr);
@@ -182,39 +183,24 @@ export async function syncInterpelli() {
 
     // 6. Pulizia automatica interpelli scaduti (>48h)
     try {
-      const { data: allRows } = await supabase.from('interpelli').select('*');
-      if (allRows && allRows.length > 0) {
-        const now = new Date();
-        const FORTY_EIGHT_HOURS_MS = 48 * 3600 * 1000;
-        const idsToDelete: number[] = [];
+      const now = new Date();
+      const FORTY_EIGHT_HOURS_MS = 48 * 3600 * 1000;
+      const NINE_DAYS_MS = 9 * 86400 * 1000;
 
-        allRows.forEach(row => {
-          const item = formatInterpelloItem(row);
-          if (item.is_expired) {
-            let expiredForMs = 0;
-            if (item.scadenza) {
-              const expDt = new Date(item.scadenza);
-              if (!isNaN(expDt.getTime())) {
-                expiredForMs = now.getTime() - expDt.getTime();
-              }
-            } else if (item.wp_date) {
-              const wpDt = new Date(item.wp_date);
-              if (!isNaN(wpDt.getTime())) {
-                expiredForMs = now.getTime() - (wpDt.getTime() + 7 * 86400 * 1000);
-              }
-            }
+      const cutoffScadenza = new Date(now.getTime() - FORTY_EIGHT_HOURS_MS).toISOString();
+      const cutoffWpDate = new Date(now.getTime() - NINE_DAYS_MS).toISOString();
 
-            if (expiredForMs >= FORTY_EIGHT_HOURS_MS) {
-              idsToDelete.push(item.id);
-            }
-          }
-        });
+      await supabase
+        .from('interpelli')
+        .delete()
+        .not('scadenza', 'is', null)
+        .lt('scadenza', cutoffScadenza);
 
-        if (idsToDelete.length > 0) {
-          console.log(`Eliminazione di ${idsToDelete.length} interpelli scaduti da più di 48 ore...`);
-          await supabase.from('interpelli').delete().in('id', idsToDelete);
-        }
-      }
+      await supabase
+        .from('interpelli')
+        .delete()
+        .is('scadenza', null)
+        .lt('wp_date', cutoffWpDate);
     } catch (cleanupErr) {
       console.warn('Errore durante la pulizia post-sync:', cleanupErr);
     }

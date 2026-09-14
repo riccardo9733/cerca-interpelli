@@ -14,11 +14,10 @@ export const ADMIN_CLICK_WINDOW_MS = 2500;
 export const ADMIN_SESSION_KEY = 'cerca_interpelli_admin_unlocked';
 export const ADMIN_EVENT = 'cerca-interpelli-admin-change';
 
-// Hash di default (sostituibile con NEXT_PUBLIC_ADMIN_PASSWORD_HASH).
-// Generato per l'owner — cambialo quando vuoi rigenerando con:
-// node -e "console.log(require('crypto').createHash('sha256').update('TUA_PASSWORD').digest('hex'))"
+// Hash di default per la password 'UZD8bXEJUVR' (sostituibile con NEXT_PUBLIC_ADMIN_PASSWORD_HASH).
+// Rigenerabile con: node -e "console.log(require('crypto').createHash('sha256').update('TUA_PASSWORD').digest('hex'))"
 const BUILTIN_ADMIN_PASSWORD_HASH =
-  '8da9ef7f98b972b5621a1d83ed499bfaa58279c2f5b939b1287a1883a65f7b38';
+  'ead5219123343d4a36eb204da466c5e16aac85765e5685b618bbd0d95198ae3b';
 
 export function getAdminPasswordHash(): string {
   const fromEnv = process.env.NEXT_PUBLIC_ADMIN_PASSWORD_HASH;
@@ -105,7 +104,7 @@ function pureSha256Hex(ascii: string): string {
 }
 
 export async function verifyAdminPassword(password: string): Promise<boolean> {
-  const input = password.normalize('NFC');
+  const input = password.trim().normalize('NFC');
   const [a, b] = await Promise.all([
     sha256Hex(input),
     Promise.resolve(getAdminPasswordHash()),

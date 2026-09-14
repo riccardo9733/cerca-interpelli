@@ -139,7 +139,7 @@ export async function triggerManualSync(): Promise<SyncResult> {
 
   // 1. Tenta la chiamata diretta dal browser all'Edge Function (3s con CORS attivo)
   try {
-    const res = await fetch(`${supabaseUrl}/functions/v1/sync?per_page=100&pages=2`, {
+    const res = await fetch(`${supabaseUrl}/functions/v1/sync`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

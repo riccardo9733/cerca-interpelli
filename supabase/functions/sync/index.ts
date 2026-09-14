@@ -670,20 +670,33 @@ Deno.serve(async (req) => {
         .eq('key', 'global')
         .maybeSingle();
       lastSyncAt = stateRow?.last_sync_at ?? null;
+
+      // Fallback: se sync_state non ha una data, ricava la data dell'interpello più recente già presente nel DB
+      if (!lastSyncAt) {
+        const { data: latestRow } = await supabase
+          .from('interpelli')
+          .select('wp_date')
+          .order('wp_date', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        lastSyncAt = latestRow?.wp_date ?? null;
+      }
     }
 
-    // Calcola timestamp "syncStartedAt" PRIMA di scaricare i post, così non perdiamo post
-    // pubblicati mentre gira il sync corrente
-    const syncStartedAt = new Date().toISOString();
+    // Pulisce la data per WordPress (rimuove millisecondi e timezone offset/Z per match su post_date locale)
+    const cleanLastSyncDate = lastSyncAt ? lastSyncAt.trim().replace(/\.\d+/, '').replace(/(\+[0-9:]+|Z)$/, '') : null;
+    const cutoffDate = lastSyncAt ? new Date(lastSyncAt) : new Date(Date.now() - 7 * 86400 * 1000);
 
+    const syncStartedAt = new Date().toISOString();
     const posts: any[] = [];
+    let stopPagination = false;
+
     for (let pageNum = 1; pageNum <= maxPages; pageNum++) {
-      // Se abbiamo una data di riferimento, chiediamo a WP solo i post modificati/pubblicati dopo
-      // Ordine: modified (decrescente) così i più recenti vengono prima e possiamo stoppare presto
-      let wpApiUrl = `${WP_BASE_URL}?categories=${WP_CATEGORY}&per_page=${perPage}&page=${pageNum}&orderby=modified&order=desc`;
-      if (lastSyncAt) {
-        // WP REST API: ?modified_after= filtra i post con modified > data
-        wpApiUrl += `&modified_after=${encodeURIComponent(lastSyncAt)}`;
+      // Ordine: data di pubblicazione decrescente (i più recenti vengono prima)
+      let wpApiUrl = `${WP_BASE_URL}?categories=${WP_CATEGORY}&per_page=${perPage}&page=${pageNum}&orderby=date&order=desc`;
+      if (cleanLastSyncDate && !force) {
+        // WP REST API: ?after= filtra solo i post pubblicati DOPO la data specificata
+        wpApiUrl += `&after=${encodeURIComponent(cleanLastSyncDate)}`;
       }
 
       const res = await fetch(wpApiUrl, {
@@ -697,12 +710,21 @@ Deno.serve(async (req) => {
 
       const pageData = await res.json();
       if (!Array.isArray(pageData) || pageData.length === 0) break;
-      posts.push(...pageData);
 
-      // Se siamo in modalità incrementale e i risultati sono meno del perPage richiesto,
-      // non c'è una pagina successiva
-      if (pageData.length < perPage) break;
+      for (const p of pageData) {
+        const postDate = p.date ? new Date(p.date) : null;
+        // Guard di sicurezza: se il post è antecedente o uguale alla data dell'ultimo scan, interrompi subito!
+        if (!force && cutoffDate && postDate && !isNaN(postDate.getTime()) && postDate.getTime() <= cutoffDate.getTime()) {
+          stopPagination = true;
+          break;
+        }
+        posts.push(p);
+      }
+
+      // Se abbiamo raggiunto post antecedenti al cutoff o la pagina ha meno elementi di perPage, fermati
+      if (stopPagination || pageData.length < perPage) break;
     }
+
     let itemsFound = posts.length;
     let itemsNew = 0;
     let itemsUpdated = 0;
@@ -711,16 +733,16 @@ Deno.serve(async (req) => {
 
     // Pre-carica in un'unica query tutti gli interpelli già presenti nel DB
     const wpIds = posts.map(p => p.id);
-    const { data: existingRows } = await supabase
+    const { data: existingRows } = wpIds.length > 0 ? await supabase
       .from('interpelli')
-      .select('wp_id, wp_modified, school_name, school_code, school_address, school_city, scadenza, scadenza_raw, status_candidatura, notes, ai_enhanced')
-      .in('wp_id', wpIds);
+      .select('id, wp_id, item_key, wp_modified, school_name, school_code, school_address, school_city, latitude, longitude, scadenza, scadenza_raw, status_candidatura, notes, ai_enhanced, classi_concorso, ordine_scuola, tipo_posto, posti_disponibili, ore_settimanali, periodo_desc, periodo_inizio, periodo_fine, email_candidatura, oggetto_email, link_candidatura')
+      .in('wp_id', wpIds) : { data: [] };
 
-    const existingMap = new Map<number, any>();
+    const existingKeyMap = new Map<string, any>();
+    const existingWpMap = new Map<number, boolean>();
     for (const r of existingRows || []) {
-      if (!existingMap.has(r.wp_id)) {
-        existingMap.set(r.wp_id, r);
-      }
+      if (r.item_key) existingKeyMap.set(r.item_key, r);
+      existingWpMap.set(r.wp_id, true);
     }
 
     for (const p of posts) {
@@ -733,20 +755,12 @@ Deno.serve(async (req) => {
       const wpUrl = p.link || '';
       const contentHtml = p.content?.rendered || '';
 
-      const existing = existingMap.get(wpId);
-      const wpModifiedChanged = existing && !isSameDate(existing.wp_modified, wpModified);
-
-      // Se il post non è cambiato su WordPress, skip (a meno di force)
-      if (!force && existing && !wpModifiedChanged) {
+      // REGOLA FONDAMENTALE: Se non siamo in modalità force e l'interpello esiste già nel DB, SKIP IMMEDIATO!
+      // Non riscaricare PDF, non rianalizzare e NON sovrascrivere nulla.
+      if (!force && existingWpMap.has(wpId)) {
         itemsSkipped++;
         continue;
       }
-
-      // Se il post è stato arricchito con AI ma su WP non è cambiato, mantieni i dati AI
-      // (questo caso è già coperto dal blocco sopra, ma lo documentiamo esplicitamente)
-      // Se invece wp_modified è cambiato su un record ai_enhanced, rigeneriamo e resettiamo ai_enhanced
-      const isAiEnhanced = existing?.ai_enhanced === true;
-      const willResetAi = isAiEnhanced && wpModifiedChanged;
 
       const matchedSchool = resolveSchoolFromCatalog(title);
       const schoolName = matchedSchool ? matchedSchool.name : extractCleanSchoolName(title);
@@ -792,7 +806,6 @@ Deno.serve(async (req) => {
       if (postiBlocks && postiBlocks.length > 0) {
         positionsToInsert = postiBlocks;
       } else if (classi.length > 1) {
-        // Se ci sono più classi di concorso distinte nel bando, crea una card per ciascuna classe!
         positionsToInsert = classi.map(c => {
           const isSost = ["ADAA", "ADEE", "ADMM", "ADSS", "ADEI"].includes(c);
           let ord = ordine;
@@ -826,12 +839,14 @@ Deno.serve(async (req) => {
       for (let idx = 0; idx < positionsToInsert.length; idx++) {
         const pos = positionsToInsert[idx];
         const itemKey = `${wpId}-${idx + 1}`;
+        const existingRecord = existingKeyMap.get(itemKey);
 
         let posClassi = classi;
         if (pos.codice_classe && isValidMiurClassCode(pos.codice_classe)) {
           posClassi = [pos.codice_classe.toUpperCase()];
         }
 
+        // Se il record esisteva già (modalità force), preserva tutti i dati utente e AI
         const record: Record<string, any> = {
           wp_id: wpId,
           item_key: itemKey,
@@ -841,39 +856,38 @@ Deno.serve(async (req) => {
           wp_date: wpDate,
           wp_modified: wpModified,
           wp_url: wpUrl,
-          school_name: schoolName,
-          school_code: matchedSchool ? matchedSchool.code : (existing?.school_code || null),
-          school_address: matchedSchool ? matchedSchool.address : (existing?.school_address || null),
-          school_city: matchedSchool ? matchedSchool.city : (existing?.school_city || 'Padova'),
-          latitude: matchedSchool ? matchedSchool.lat : 45.4064,
-          longitude: matchedSchool ? matchedSchool.lon : 11.8768,
-          classi_concorso: posClassi,
-          ordine_scuola: pos.ordine_scuola || ordine,
-          tipo_posto: pos.tipo_posto || tipoPosto,
-          posti_disponibili: pos.posti || posti,
-          ore_settimanali: pos.ore || ore,
-          periodo_desc: pos.periodo || periodoInfo.periodo_desc,
-          periodo_inizio: periodoInfo.periodo_inizio,
-          periodo_fine: periodoInfo.periodo_fine,
-          email_candidatura: email,
-          oggetto_email: oggettoEmail,
-          link_candidatura: linkCandidatura,
+          school_name: existingRecord?.school_name || (matchedSchool ? matchedSchool.name : extractCleanSchoolName(title)),
+          school_code: existingRecord?.school_code || (matchedSchool ? matchedSchool.code : null),
+          school_address: existingRecord?.school_address || (matchedSchool ? matchedSchool.address : null),
+          school_city: existingRecord?.school_city || (matchedSchool ? matchedSchool.city : 'Padova'),
+          latitude: existingRecord?.latitude || (matchedSchool ? matchedSchool.lat : 45.4064),
+          longitude: existingRecord?.longitude || (matchedSchool ? matchedSchool.lon : 11.8768),
+          classi_concorso: existingRecord?.classi_concorso || posClassi,
+          ordine_scuola: existingRecord?.ordine_scuola || pos.ordine_scuola || ordine,
+          tipo_posto: existingRecord?.tipo_posto || pos.tipo_posto || tipoPosto,
+          posti_disponibili: existingRecord?.posti_disponibili ?? (pos.posti || posti),
+          ore_settimanali: existingRecord?.ore_settimanali || pos.ore || ore,
+          periodo_desc: existingRecord?.periodo_desc || pos.periodo || periodoInfo.periodo_desc,
+          periodo_inizio: existingRecord?.periodo_inizio || periodoInfo.periodo_inizio,
+          periodo_fine: existingRecord?.periodo_fine || periodoInfo.periodo_fine,
+          email_candidatura: existingRecord?.email_candidatura || email,
+          oggetto_email: existingRecord?.oggetto_email || oggettoEmail,
+          link_candidatura: existingRecord?.link_candidatura || linkCandidatura,
           posti_dettaglio: positionsToInsert,
-          status_candidatura: existing?.status_candidatura || 'nessuno',
-          notes: pos.note || existing?.notes || null,
+          status_candidatura: existingRecord?.status_candidatura || 'nessuno',
+          notes: existingRecord?.notes || pos.note || null,
           attachments: attachments,
           content_raw: pdfText ? pdfText.slice(0, 3000) : null,
-          // Resetta ai_enhanced se wp_modified è cambiato (il contenuto WP è diverso)
-          ai_enhanced: willResetAi ? false : (isAiEnhanced ? true : false),
+          ai_enhanced: existingRecord?.ai_enhanced === true,
           updated_at: new Date().toISOString()
         };
 
-        if (scadenzaIso) {
+        if (existingRecord?.scadenza) {
+          record.scadenza = existingRecord.scadenza;
+          record.scadenza_raw = existingRecord.scadenza_raw;
+        } else if (scadenzaIso) {
           record.scadenza = scadenzaIso;
           record.scadenza_raw = scadenzaRaw;
-        } else if (existing?.scadenza) {
-          record.scadenza = existing.scadenza;
-          record.scadenza_raw = existing.scadenza_raw;
         } else {
           record.scadenza = null;
           record.scadenza_raw = null;
@@ -884,14 +898,14 @@ Deno.serve(async (req) => {
           .upsert(record, { onConflict: 'item_key' });
 
         if (!upsertErr) {
-          if (existing) itemsUpdated++;
+          if (existingRecord) itemsUpdated++;
           else itemsNew++;
         } else {
           upsertErrors.push({ itemKey, error: upsertErr });
         }
       }
 
-      // Delete any leftover position records from previous runs if positions decreased
+      // Elimina eventuali posizioni extra se il bando ha ridotto le posizioni
       await supabase
         .from('interpelli')
         .delete()
@@ -904,12 +918,14 @@ Deno.serve(async (req) => {
       ? (itemsNew > 0 || itemsUpdated > 0 ? 'partial_error' : 'error')
       : 'success';
 
-    // Aggiorna sync_state con la data di inizio del sync corrente (non "now" per evitare race condition)
-    // Solo se il sync è completato senza errori critici
+    // Salva data dell'ultimo scan: data del post più recente trovato, oppure data inizio sync
+    const newestPostDate = posts.length > 0 && posts[0].date ? posts[0].date : null;
+    const nextSyncAt = newestPostDate || cleanLastSyncDate || syncStartedAt;
+
     if (finalStatus === 'success' || finalStatus === 'partial_error') {
       await supabase
         .from('sync_state')
-        .upsert({ key: 'global', last_sync_at: syncStartedAt, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+        .upsert({ key: 'global', last_sync_at: nextSyncAt, updated_at: new Date().toISOString() }, { onConflict: 'key' });
     }
 
     await supabase.from('sync_logs').insert({
@@ -927,9 +943,9 @@ Deno.serve(async (req) => {
         items_new: itemsNew,
         items_updated: itemsUpdated,
         items_skipped: itemsSkipped,
-        last_sync_at: lastSyncAt,
+        last_sync_at: nextSyncAt,
         errors: upsertErrors,
-        message: `Sincronizzazione completata: ${itemsNew} nuovi, ${itemsUpdated} aggiornati, ${itemsSkipped} invariati (di cui ${posts.filter((_, i) => existingMap.get(posts[i]?.id)?.ai_enhanced).length} con AI preservato).`
+        message: `Sincronizzazione completata: ${itemsNew} nuovi, ${itemsUpdated} aggiornati, ${itemsSkipped} invariati.`
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
